@@ -1,0 +1,62 @@
+# Data files - never commit raw database downloads
+data/raw/
+data/processed/
+*.fasta
+*.fastq
+*.fa
+*.fq
+*.gbk
+*.gb
+*.gff
+*.gff3
+*.vcf
+*.bam
+*.sam
+*.sra
+
+# Large model files
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.h5
+*.hdf5
+
+# Credentials and secrets
+.env
+*.key
+*.pem
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Results (optional - uncomment if you don't want to track outputs)
+# results/
+# *.log
