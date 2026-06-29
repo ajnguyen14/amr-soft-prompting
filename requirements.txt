@@ -1,0 +1,9 @@
+torch
+fair-esm
+transformers
+biopython
+pyyaml
+wandb
+pytest
+numpy
+pandas
