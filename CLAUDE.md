@@ -344,3 +344,31 @@ If Claude Code is on the CPU server and asked to do something in the 🚫 column
 1. Check the versioned roadmap — is this V1 scope?
 2. Check the architecture diagram — does this fit the established flow?
 3. Flag it and ask rather than assuming and building.
+
+## Project Status File
+
+At the end of every session, also overwrite `docs/STATUS.md` with the current project state. Use this template:
+
+# AMR Soft Prompting — Project Status
+_Last updated: YYYY-MM-DD HH:MM_
+
+## Current Version
+Which version is actively being developed (V1 / V2 / V3) and what stage it's at.
+
+## Completion
+High-level percentage estimate and what that's based on.
+
+## What's Working
+- Bullet list of completed, tested components.
+
+## What's In Progress
+- Bullet list of components currently being built.
+
+## What's Not Started
+- Bullet list of remaining components, in intended build order.
+
+## Open Questions / Blockers
+- Anything unresolved that affects next steps.
+
+## Recent Changes
+The 3–5 most impactful changes from the last session, in plain English.
