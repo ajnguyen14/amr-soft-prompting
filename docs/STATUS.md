@@ -1,11 +1,11 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-06-30 13:00_
+_Last updated: 2026-07-02 15:00_
 
 ## Current Version
 
 **V1 — Core Pipeline**, mid-implementation. Data layer complete. ESM-2 backbone
-complete. Blocked on soft_prompt.py design conversation with Andreopolous before
-the model layer can proceed.
+complete. Soft prompt design locked in following the 2026-07-02 meeting with
+Andreopolous — unblocked, ready to implement `soft_prompt.py` next session.
 
 ## Completion
 
@@ -35,17 +35,20 @@ the model layer can proceed.
 
 ## What's In Progress
 
-Nothing actively mid-implementation. Blocked on soft_prompt.py design.
+Nothing actively mid-implementation. Soft prompt design finalized 2026-07-02;
+implementation starts next session.
 
 ## What's Not Started
 
 In intended build order:
 
-1. **`src/models/soft_prompt.py`** ← **BLOCKED** on design conversation with Andreopolous
-   - How to encode mechanism + drug class as continuous vectors
-   - Whether to evaluate internal mode, external mode, or both as an ablation
-   - Output dimensionality (must equal `embed_dim` = 1280 for 650M training model,
-     or a projection layer is needed)
+1. **`src/models/soft_prompt.py`** — design locked in 2026-07-02, ready to implement:
+   - Injection modes: both internal and external run as an ablation (internal =
+     hypothesis, external = baseline)
+   - Mechanism encoding: `nn.Embedding` lookup, single integer → 1280-dim vector
+   - Drug class encoding: `nn.Embedding` lookup with sum pooling over active class
+     embeddings → 1280-dim vector
+   - 2 soft prompt tokens; output dim = `embed_dim` = 1280, no projection layer needed
 2. **`tests/test_soft_prompt.py`** — soft prompt module shape smoke tests
 3. **`src/models/classifier.py`** — MLP head; input width depends on injection_mode
    and soft prompt output dim
@@ -62,28 +65,22 @@ In intended build order:
 
 ## Open Questions / Blockers
 
-- **Soft prompt design (BLOCKING):** Three decisions needed from Andreopolous:
-  1. Run both injection modes as an ablation, or commit to one?
-  2. How to encode CARD metadata (mechanism, drug class) as continuous vectors?
-     Options: learned lookup table, fixed one-hot projection, or something else.
-  3. Does the soft prompt output dimension match `embed_dim` (simplest), or does
-     it use a different size requiring a projection in `ESM2Wrapper`?
-- **Train/val/test split:** should split on ARO accessions (not sequences) to prevent
-  data leakage from multi-sequence entries.
-- **Multi-task loss weighting:** how to balance BCE (drug class, multi-label) vs.
-  CrossEntropy (mechanism, family) in the combined objective.
 - **`configs/base.yaml`** needs content before the training loop can be built.
 
 ## Recent Changes
 
-1. **`ESM2Wrapper` implemented** (`src/models/esm2_wrapper.py`) — both internal and
-   external injection modes, verified frozen params, correct residue-only mean pooling.
-   Key implementation finding: this version of HuggingFace transformers bypasses the
-   embedding layer entirely when `inputs_embeds` is passed, requiring explicit
-   pre-processing of word embeddings in internal mode.
-2. **`tests/test_esm2_wrapper.py` written** — 32 tests; includes a gradient test
-   confirming the frozen-param contract holds during a real backward pass.
-3. **`AMRDataset` committed** (`src/data/dataset.py`) — multi-hot drug class encoding;
-   57% of CARD records have >1 drug class so multi-label is the default, not the edge case.
-4. **Session documentation established** — `docs/sessions/` with retroactive logs for
-   all three sessions; `docs/STATUS.md` updated each session per CLAUDE.md instructions.
+1. **Andreopolous meeting (2026-07-02)** — soft prompt design approved; Aidan
+   proceeding with implementation. Supervisor emphasis: dataset clarity and
+   reproducibility, since he intends to continue this work with other students
+   toward publication.
+2. **Soft prompt design locked in** — both injection modes run as an ablation
+   (internal = hypothesis, external = baseline); `nn.Embedding` lookups for
+   mechanism (single int → 1280-dim) and drug class (sum-pooled over active
+   classes → 1280-dim); 2 soft prompt tokens; output dim = `embed_dim` = 1280,
+   no projection layer needed.
+3. **Loss weighting resolved** — equal weights (α = β = γ = 1) for V1;
+   `BCEWithLogitsLoss` (drug class), `CrossEntropyLoss` (mechanism, family);
+   tuning deferred to V2.
+4. **Train/val/test split strategy resolved** — split on ARO accessions (not
+   sequences) to prevent data leakage; stratified by resistance mechanism;
+   80/10/10 ratio; fixed random seed for reproducibility.

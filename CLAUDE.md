@@ -72,6 +72,27 @@ AMR Gene Class Prediction
 
 ---
 
+## Reproducibility Requirements
+
+- **Random seeds** — set explicitly everywhere: PyTorch, numpy, and Python's `random`
+  module. Use seed `42` as the project default.
+- **Train/val/test split** — always split on ARO accessions, never sequences.
+  Stratified by resistance mechanism. 80/10/10 ratio. Split must be deterministic
+  given the fixed seed.
+- **Preprocessing entry point** — `scripts/preprocess_card.py` must be a single
+  runnable script that takes raw CARD files and produces all data artifacts needed
+  for training. No manual steps outside this script.
+- **Config completeness** — every training run must be fully specified by a config
+  file. No hardcoded hyperparameters in source code.
+- **Experiment logging** — all training runs logged to wandb with the full config
+  that produced them. A result without a corresponding config is not reproducible.
+
+**Rationale:** supervisor (Prof. Andreopolous) intends to continue this work with
+other students for publication. Any researcher should be able to clone the repo,
+run `preprocess_card.py`, and reproduce training exactly.
+
+---
+
 ## Model Variants
 
 | Environment     | Model              | Purpose                                      |
