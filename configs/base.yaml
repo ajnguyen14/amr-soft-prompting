@@ -1,0 +1,3 @@
+classifier:
+  hidden_dim: 512
+  dropout: 0.1
