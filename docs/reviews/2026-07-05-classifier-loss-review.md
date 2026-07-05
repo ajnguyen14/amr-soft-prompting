@@ -20,50 +20,47 @@ don't lose track of the deferred items.
    `ClassifierHead` were already constructed, so model weight init wasn't
    seeded. **Fix:** seed moved to the top of `test_forward_and_backward`,
    before any module is constructed.
-
-## Partially addressed — flagged for later
-
-3. **Loss weights not config-driven** — `configs/base.yaml` now has a `loss:`
+3. **Loss weights not config-driven** — `configs/base.yaml` has a `loss:`
    section (`weight_drug_class`/`weight_resistance_mechanism`/
-   `weight_amr_gene_family`, all `1.0`) matching `AMRLoss`'s constructor
-   defaults. **Still open:** nothing reads this section yet. A TODO comment in
-   `src/training/loss.py` and a note in `docs/STATUS.md`'s Open Questions flag
-   that `train.py` must construct `AMRLoss(**config["loss"])` explicitly, or a
-   future edit to the config will silently do nothing.
+   `weight_amr_gene_family`, all `1.0`). **Fixed:** `src/training/train.py`'s
+   `build_models()` now constructs `AMRLoss(**config["loss"])` explicitly, so
+   the config is the actual source of truth, not a coincidentally-matching
+   Python default.
+4. **`input_dim`/N formula duplicated** across `tests/test_classifier.py`,
+   `tests/test_forward_pass.py`, and `ESM2Wrapper`'s docstring, with no single
+   source of truth. **Fixed:** added `ESM2Wrapper.output_dim(num_prompt_tokens)`
+   and `SoftPromptModule.NUM_PROMPT_TOKENS` (=2) as the single source of truth
+   for both halves of the formula; `train.py` and `test_forward_pass.py` now
+   call `esm2.output_dim(SoftPromptModule.NUM_PROMPT_TOKENS)` instead of
+   re-deriving it. (`test_classifier.py`'s hardcoded constant was left alone —
+   that test deliberately avoids constructing a real `ESM2Wrapper` to stay fast
+   and dependency-free, so it isn't testing the production formula anyway.)
+5. **`tests/test_forward_pass.py` never exercises real `AMRDataset`** —
+   substantially addressed, not by changing `test_forward_pass.py` itself, but
+   because `tests/test_train.py` now runs the real `load_card_dataset` →
+   `AMRDataset` → `DataLoader` → training loop path end-to-end against a
+   synthetic CARD file on disk, closing the actual gap (a real `AMRDataset`
+   integration was untested anywhere) via a more appropriate test file than the
+   one that originally surfaced it.
 
 ## Deferred — no effect on training correctness today
 
-4. **`input_dim`/N formula duplicated** across `tests/test_classifier.py`,
-   `tests/test_forward_pass.py`, and `ESM2Wrapper`'s docstring, with no single
-   source of truth. Only becomes a real risk if the soft-prompt token count
-   ever changes (V2+ territory). **Plan:** fix when `train.py` is written, by
-   adding an `ESM2Wrapper.output_dim` property instead of re-deriving the
-   formula a fourth time.
-5. **`docs/STATUS.md` test-count arithmetic error** — the breakdown at line 61
-   still lists "20 dataset" (should be 18); `22+20+32+6+9+2=91`, not the
-   correct `89`. Confirmed via `pytest --collect-only`. Doc-only, zero runtime
-   effect. Not yet fixed.
-6. **Weaker ESM-2-frozen gradient assertion** in `tests/test_forward_pass.py`
+6. **`docs/STATUS.md` test-count arithmetic error** — a past revision's
+   breakdown listed "20 dataset" (should be 18), so the stated per-category
+   sum didn't match the stated total. Doc-only, zero runtime effect; STATUS.md
+   has since been rewritten multiple times and should be double-checked for
+   arithmetic the next time it's touched, but isn't worth a dedicated fix pass.
+7. **Weaker ESM-2-frozen gradient assertion** in `tests/test_forward_pass.py`
    (`grad is None or grad.abs().sum() == 0`) vs. the stricter `grad is None`
    in `tests/test_esm2_wrapper.py`. The looser clause is currently dead code
    (frozen params never populate `.grad` at all), so it doesn't mask anything
    today.
-7. **`AMRLoss`'s `drug_class_labels`→`drug_class` key mapping isn't shared** —
-   only matters once `src/eval/evaluate.py` exists and needs the same
-   correspondence between predictions and ground truth. Nothing to do until
-   that module is written.
-8. **Test files missing type hints/docstrings** on `test_*` methods and test
+8. **`AMRLoss`'s `drug_class_labels`→`drug_class` key mapping isn't shared** —
+   only matters once `src/eval/evaluate.py` (the fuller per-class F1 /
+   confusion-matrix holdout eval, not the `src/eval/metrics.py` per-epoch
+   helper added this session) exists and needs the same correspondence between
+   predictions and ground truth. Nothing to do until that module is written.
+9. **Test files missing type hints/docstrings** on `test_*` methods and test
    classes in `tests/test_classifier.py` and `tests/test_forward_pass.py` —
    literal CLAUDE.md violation (no test-file exemption stated for these two
    rules), but pure style, zero functional impact.
-
-## Test-coverage gap (recommend closing before first GPU run, not before writing train.py)
-
-9. **`tests/test_forward_pass.py` never exercises real `AMRDataset`** — it
-   hand-builds a batch dict with keys/dtypes chosen to already match what
-   `AMRLoss`/`ClassifierHead` expect, rather than running data through
-   `AMRDataset` + `DataLoader` collation. This is the same class of bug that
-   was caught only by manually re-reading `dataset.py`'s source during the
-   `AMRLoss` design (see `docs/sessions/2026-07-05-loss-and-forward-pass.md`).
-   Cheap to close on CPU; recommended before spending GPU time on a run that
-   could fail on the first real batch over an undetected key/shape mismatch.

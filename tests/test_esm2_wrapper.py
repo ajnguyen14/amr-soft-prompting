@@ -68,6 +68,25 @@ class TestInit:
 
 
 # ---------------------------------------------------------------------------
+# output_dim — single source of truth for the mode-dependent output width
+# ---------------------------------------------------------------------------
+
+class TestOutputDim:
+    def test_internal_mode_ignores_num_prompt_tokens(self, wrapper_internal):
+        for n in (1, 2, 5):
+            assert wrapper_internal.output_dim(n) == EMBED_DIM
+
+    def test_external_mode_scales_with_num_prompt_tokens(self, wrapper_external):
+        for n in (1, 2, 5):
+            assert wrapper_external.output_dim(n) == EMBED_DIM + n * EMBED_DIM
+
+    def test_external_mode_matches_actual_forward_output_width(self, wrapper_external):
+        with torch.no_grad():
+            out = wrapper_external([SEQ_A], make_prompt(1, n_prompt=N_PROMPT))
+        assert out.shape[1] == wrapper_external.output_dim(N_PROMPT)
+
+
+# ---------------------------------------------------------------------------
 # Frozen-parameter guarantee
 # ---------------------------------------------------------------------------
 

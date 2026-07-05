@@ -16,7 +16,6 @@ from src.training.loss import AMRLoss
 
 MODEL_NAME = "facebook/esm2_t6_8M_UR50D"
 EMBED_DIM = 320       # hidden_size for esm2_t6_8M_UR50D
-N_PROMPT_TOKENS = 2   # SoftPromptModule always emits 2 tokens
 HIDDEN_DIM = 64
 NUM_MECHANISMS = 5
 NUM_DRUG_CLASSES = 10
@@ -25,13 +24,6 @@ DROPOUT = 0.1
 BATCH_SIZE = 2
 
 SEQUENCES = ["MKAYFIAILT", "MKAYFIAILTLFTCIATVVRAQQMSELENRIDSLLNGK"]
-
-
-def input_dim_for_mode(injection_mode: str) -> int:
-    """Classifier input width for the given ESM2Wrapper injection mode."""
-    if injection_mode == "internal":
-        return EMBED_DIM
-    return EMBED_DIM + N_PROMPT_TOKENS * EMBED_DIM
 
 
 def make_batch() -> dict[str, torch.Tensor]:
@@ -64,7 +56,7 @@ class TestFullPipeline:
         torch.manual_seed(0)
         soft_prompt = SoftPromptModule(NUM_MECHANISMS, NUM_DRUG_CLASSES, EMBED_DIM)
         classifier = ClassifierHead(
-            input_dim=input_dim_for_mode(esm2.injection_mode),
+            input_dim=esm2.output_dim(SoftPromptModule.NUM_PROMPT_TOKENS),
             hidden_dim=HIDDEN_DIM,
             dropout=DROPOUT,
             num_drug_classes=NUM_DRUG_CLASSES,

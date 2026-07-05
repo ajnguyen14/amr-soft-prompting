@@ -64,6 +64,25 @@ class ESM2Wrapper(nn.Module):
         """Device the ESM-2 model is on."""
         return next(self.esm.parameters()).device
 
+    def output_dim(self, num_prompt_tokens: int) -> int:
+        """Width of forward()'s output for this wrapper's injection_mode.
+
+        Single source of truth for the mode-dependent output width formula
+        (see forward()'s docstring), so callers building a ClassifierHead
+        don't need to re-derive `embed_dim + N * embed_dim` themselves.
+
+        Args:
+            num_prompt_tokens: N, the number of soft prompt tokens that will
+                be passed to forward() (e.g. SoftPromptModule.NUM_PROMPT_TOKENS).
+
+        Returns:
+            embed_dim for 'internal' mode; embed_dim + num_prompt_tokens *
+            embed_dim for 'external' mode.
+        """
+        if self.injection_mode == "internal":
+            return self.embed_dim
+        return self.embed_dim + num_prompt_tokens * self.embed_dim
+
     def forward(
         self,
         sequences: list[str],

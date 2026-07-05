@@ -20,6 +20,11 @@ class SoftPromptModule(nn.Module):
             (1280 for the 650M training model) so no projection layer is needed.
     """
 
+    # Always emits exactly 2 tokens (mechanism + drug_class). Single source of
+    # truth for callers computing ESM2Wrapper.output_dim in 'external' mode,
+    # instead of each caller re-hardcoding the number 2.
+    NUM_PROMPT_TOKENS = 2
+
     def __init__(self, num_mechanisms: int, num_drug_classes: int, embed_dim: int) -> None:
         super().__init__()
         # Learned lookup table: maps a resistance mechanism index to a dense
