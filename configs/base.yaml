@@ -1,3 +1,14 @@
+model:
+  # Not an actual toggle: ESM2Wrapper always freezes ESM-2 internally,
+  # unconditionally, regardless of this value. Documents the invariant only.
+  freeze_esm2: true
+
+training:
+  batch_size: 32
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"
+
 classifier:
   hidden_dim: 512
   dropout: 0.1

@@ -1,0 +1,17 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/"
+
+model:
+  esm2_variant: "esm2_t33_650M_UR50D"
+  device: "cuda"
+  # The only field that differs from gpu_server_internal.yaml.
+  injection_mode: "external"
+
+training:
+  batch_size: 32
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"

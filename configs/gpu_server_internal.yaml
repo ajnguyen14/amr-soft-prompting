@@ -4,3 +4,14 @@ paths:
   aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
   output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/"
 
+model:
+  esm2_variant: "esm2_t33_650M_UR50D"
+  device: "cuda"
+  # The only field that differs from gpu_server_external.yaml.
+  injection_mode: "internal"
+
+training:
+  batch_size: 32
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"

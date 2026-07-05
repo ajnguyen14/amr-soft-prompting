@@ -112,24 +112,35 @@ All environment-specific settings live in `configs/`. Scripts must accept a `--c
 
 ```
 configs/
-  base.yaml          ← shared defaults (model architecture, training hyperparams)
-  local.yaml         ← local WSL2 overrides (8M model, cpu, small batch)
-  cpu_server.yaml    ← CPU server overrides (150M model, cpu, larger batch)
-  gpu_server.yaml    ← GPU server overrides (650M model, cuda, full batch)
+  base.yaml                  ← shared defaults (model architecture, training hyperparams)
+  local.yaml                 ← local WSL2 overrides (8M model, cpu, small batch)
+  cpu_server.yaml            ← CPU server overrides (150M model, cpu, larger batch)
+  gpu_server_internal.yaml   ← GPU server, internal soft-prompt injection ablation
+  gpu_server_external.yaml   ← GPU server, external soft-prompt injection ablation
 ```
+
+`gpu_server_internal.yaml` and `gpu_server_external.yaml` are the two ablation runs
+(see Architecture / injection modes) and must be identical in every field except
+`injection_mode`. **Any hyperparameter change (learning rate, batch size, epochs,
+optimizer, etc.) must be applied to both files** — neither is derived from the
+other, so editing only one silently desynchronizes the ablation comparison and the
+two runs are no longer a controlled A/B test.
 
 Example config structure:
 ```yaml
-# configs/gpu_server.yaml
+# configs/gpu_server_internal.yaml
 model:
   esm2_variant: "esm2_t33_650M_UR50D"
   device: "cuda"
+  injection_mode: "internal"   # the only field that differs from gpu_server_external.yaml
 
 training:
   batch_size: 32
-  learning_rate: 1e-4
+  learning_rate: 1.0e-4   # YAML gotcha: "1e-4" (no decimal point) parses as a
+                          # string in PyYAML, not a float — always write
+                          # "1.0e-4" or "0.0001"
   epochs: 50
-  freeze_esm2: true
+  optimizer: "adam"
 
 paths:
   card_fasta: "/path/to/protein_fasta_protein_homolog_model.fasta"
@@ -141,6 +152,11 @@ logging:
   wandb_project: "amr-soft-prompting"
   wandb_run_name: null  # auto-generated if null
 ```
+
+Config loading: `src/utils/config.py`'s `load_config(config_path)` reads
+`config_path` and deep-merges it over `configs/base.yaml` (nested sections merge
+key-by-key, not wholesale replacement), so an environment file only needs to
+specify what it actually overrides.
 
 ---
 
@@ -155,13 +171,14 @@ amr-soft-prompting/
 │   ├── base.yaml
 │   ├── local.yaml
 │   ├── cpu_server.yaml
-│   └── gpu_server.yaml
+│   ├── gpu_server_internal.yaml
+│   └── gpu_server_external.yaml
 ├── src/
 │   ├── data/
 │   │   ├── __init__.py
 │   │   ├── card_parser.py       ← parse CARD FASTA + ARO index + card.json
 │   │   ├── prodigal_runner.py   ← wrap Prodigal for nucleotide → AA translation
-│   │   └── dataset.py           ← PyTorch Dataset class for AMR sequences
+│   │   └── dataset.py           ← PyTorch Dataset class + train/val/test split
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── esm2_wrapper.py      ← load frozen ESM-2, extract embeddings
@@ -171,12 +188,15 @@ amr-soft-prompting/
 │   │   ├── __init__.py
 │   │   ├── train.py             ← main training loop
 │   │   └── loss.py              ← loss functions
-│   └── eval/
+│   ├── eval/
+│   │   ├── __init__.py
+│   │   └── evaluate.py          ← metrics, confusion matrix, per-class breakdown
+│   └── utils/
 │       ├── __init__.py
-│       └── evaluate.py          ← metrics, confusion matrix, per-class breakdown
+│       └── config.py            ← load_config: merges base.yaml + environment override
 ├── scripts/
 │   ├── preprocess_card.py       ← one-time data preparation
-│   └── run_training.py          ← entry point: python scripts/run_training.py --config configs/gpu_server.yaml
+│   └── run_training.py          ← entry point: python scripts/run_training.py --config configs/gpu_server_internal.yaml
 ├── tests/
 │   ├── test_data_pipeline.py    ← smoke tests for data loading and label alignment
 │   ├── test_soft_prompt.py      ← smoke tests for soft prompt module shapes
@@ -315,10 +335,10 @@ Quick logic checks          Prodigal)                      Full inference
 - Use config: `configs/cpu_server.yaml`
 
 **On the GPU server (SSH session):**
-- Run all training jobs: `python scripts/run_training.py --config configs/gpu_server.yaml`
+- Run all training jobs: `python scripts/run_training.py --config configs/gpu_server_internal.yaml` (or `configs/gpu_server_external.yaml` for the external-injection ablation)
 - Run evaluation scripts
 - Monitor wandb outputs and fix errors in place
-- Use config: `configs/gpu_server.yaml`
+- Use config: `configs/gpu_server_internal.yaml` / `configs/gpu_server_external.yaml` — any hyperparameter edit must be applied to both
 
 **GitHub (handoff between environments):**
 - Push from whichever environment code was written in
@@ -339,7 +359,7 @@ Claude Code must check the current environment before running any job. If the jo
 | Full dataset inference (>1000 sequences) | GPU server | 🚫 Do not run on CPU server |
 
 If Claude Code is on the CPU server and asked to do something in the 🚫 column, respond:
-> "This job requires the GPU server (650M model / training run). Please SSH into the GPU server and re-run this command with `--config configs/gpu_server.yaml`."
+> "This job requires the GPU server (650M model / training run). Please SSH into the GPU server and re-run this command with `--config configs/gpu_server_internal.yaml` (or `_external.yaml`)."
 
 ### General Rules
 - **Never commit** `outputs/`, checkpoints, or wandb cache — gitignored
