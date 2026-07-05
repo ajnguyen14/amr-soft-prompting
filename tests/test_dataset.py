@@ -1,10 +1,25 @@
 """Smoke tests for AMRDataset (src/data/dataset.py)."""
 
+from pathlib import Path
+
 import torch
 import pytest
 
-from src.data.card_parser import CARDRecord, get_label_vocabularies
-from src.data.dataset import AMRDataset
+from src.data.card_parser import CARDRecord, get_label_vocabularies, load_card_dataset
+from src.data.dataset import AMRDataset, split_dataset
+
+# ---------------------------------------------------------------------------
+# Paths to the real CARD data — tests requiring these are skipped if absent.
+# ---------------------------------------------------------------------------
+_CARD_DIR = Path(__file__).parent.parent / "data" / "raw"
+_FASTA_PATH = _CARD_DIR / "protein_fasta_protein_homolog_model.fasta"
+_ARO_INDEX_PATH = _CARD_DIR / "aro_index.tsv"
+
+_REAL_DATA_AVAILABLE = _FASTA_PATH.exists() and _ARO_INDEX_PATH.exists()
+_skip_no_data = pytest.mark.skipif(
+    not _REAL_DATA_AVAILABLE,
+    reason="CARD data files not present (expected on CPU/GPU server)",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -224,3 +239,156 @@ class TestSingleIndexLabels:
         cbl_mech = dataset[0]["resistance_mechanism"].item()
         erm_mech = dataset[2]["resistance_mechanism"].item()
         assert cbl_mech != erm_mech
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: train/val/test split
+# ---------------------------------------------------------------------------
+
+
+def _make_split_record(aro_accession: str, mechanism: str, protein_accession: str) -> CARDRecord:
+    """Build a minimal synthetic CARDRecord for split-logic tests."""
+    return CARDRecord(
+        aro_accession=aro_accession,
+        protein_accession=protein_accession,
+        gene_name="gene",
+        organism="organism",
+        sequence="MKAYFIAILT",
+        drug_classes=["some antibiotic"],
+        resistance_mechanism=mechanism,
+        amr_gene_family="some family",
+        card_short_name="short",
+    )
+
+
+@pytest.fixture()
+def stratified_records() -> list[CARDRecord]:
+    """10 ARO accessions per mechanism across 2 mechanisms (20 total accessions).
+
+    One accession (ARO:A000) has two sequence records, to exercise the
+    multi-sequence-per-accession grouping guarantee. 21 records, 20 accessions.
+    """
+    records = []
+    for i in range(10):
+        aro = f"ARO:A{i:03d}"
+        records.append(_make_split_record(aro, "mechanism_A", f"protA{i}.1"))
+        if i == 0:
+            # Second sequence variant under the same accession.
+            records.append(_make_split_record(aro, "mechanism_A", f"protA{i}.2"))
+    for i in range(10):
+        aro = f"ARO:B{i:03d}"
+        records.append(_make_split_record(aro, "mechanism_B", f"protB{i}.1"))
+    return records
+
+
+class TestSplitDataset:
+    def test_all_records_included_exactly_once(self, stratified_records):
+        splits = split_dataset(stratified_records, seed=42)
+        combined = splits["train"] + splits["val"] + splits["test"]
+        assert len(combined) == len(stratified_records)
+        assert {r.protein_accession for r in combined} == {
+            r.protein_accession for r in stratified_records
+        }
+
+    def test_no_accession_split_across_sets(self, stratified_records):
+        """Every record for a given ARO accession must land in the same split."""
+        splits = split_dataset(stratified_records, seed=42)
+        accession_to_splits: dict[str, set[str]] = {}
+        for split_name in ("train", "val", "test"):
+            for record in splits[split_name]:
+                accession_to_splits.setdefault(record.aro_accession, set()).add(split_name)
+        for aro_accession, split_names in accession_to_splits.items():
+            assert len(split_names) == 1, (
+                f"{aro_accession} appears in multiple splits: {split_names}"
+            )
+
+    def test_multi_sequence_accession_stays_together(self, stratified_records):
+        splits = split_dataset(stratified_records, seed=42)
+        for split_name in ("train", "val", "test"):
+            protein_accs = {
+                r.protein_accession for r in splits[split_name] if r.aro_accession == "ARO:A000"
+            }
+            if protein_accs:
+                assert protein_accs == {"protA0.1", "protA0.2"}
+
+    def test_stratified_ratio_per_mechanism(self, stratified_records):
+        # 10 accessions per mechanism, default 80/10/10 -> 8/1/1 each, exactly.
+        splits = split_dataset(stratified_records, seed=42)
+        for split_name, expected_per_mechanism in (("train", 8), ("val", 1), ("test", 1)):
+            accessions = {r.aro_accession for r in splits[split_name]}
+            mechanism_a = [a for a in accessions if a.startswith("ARO:A")]
+            mechanism_b = [a for a in accessions if a.startswith("ARO:B")]
+            assert len(mechanism_a) == expected_per_mechanism
+            assert len(mechanism_b) == expected_per_mechanism
+
+    def test_deterministic_given_same_seed(self, stratified_records):
+        splits_1 = split_dataset(stratified_records, seed=42)
+        splits_2 = split_dataset(stratified_records, seed=42)
+        for split_name in ("train", "val", "test"):
+            accs_1 = [r.protein_accession for r in splits_1[split_name]]
+            accs_2 = [r.protein_accession for r in splits_2[split_name]]
+            assert accs_1 == accs_2
+
+    def test_invalid_fractions_raise(self, stratified_records):
+        with pytest.raises(ValueError, match="must sum to 1.0"):
+            split_dataset(stratified_records, train_frac=0.8, val_frac=0.1, test_frac=0.2)
+
+    def test_inconsistent_mechanism_raises(self):
+        conflicting = [
+            _make_split_record("ARO:9999", "mechanism_A", "prot1"),
+            _make_split_record("ARO:9999", "mechanism_B", "prot2"),
+        ]
+        with pytest.raises(ValueError, match="inconsistent resistance_mechanism"):
+            split_dataset(conflicting)
+
+    def test_global_rng_state_untouched(self, stratified_records):
+        """split_dataset must not perturb the global random module's state."""
+        import random as random_module
+
+        random_module.seed(1234)
+        state_before = random_module.getstate()
+        split_dataset(stratified_records, seed=42)
+        assert random_module.getstate() == state_before
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: split against the full CARD dataset (skipped when absent)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def full_dataset():
+    if not _REAL_DATA_AVAILABLE:
+        pytest.skip("CARD data files not present (expected on CPU/GPU server)")
+    return load_card_dataset(_FASTA_PATH, _ARO_INDEX_PATH)
+
+
+@_skip_no_data
+class TestSplitDatasetFullCARD:
+    def test_split_covers_all_records_with_no_overlap(self, full_dataset):
+        splits = split_dataset(full_dataset, seed=42)
+        combined_accessions = (
+            {r.aro_accession for r in splits["train"]}
+            | {r.aro_accession for r in splits["val"]}
+            | {r.aro_accession for r in splits["test"]}
+        )
+        all_accessions = {r.aro_accession for r in full_dataset}
+        assert combined_accessions == all_accessions
+
+        train_accs = {r.aro_accession for r in splits["train"]}
+        val_accs = {r.aro_accession for r in splits["val"]}
+        test_accs = {r.aro_accession for r in splits["test"]}
+        assert train_accs.isdisjoint(val_accs)
+        assert train_accs.isdisjoint(test_accs)
+        assert val_accs.isdisjoint(test_accs)
+
+    def test_split_ratio_roughly_80_10_10(self, full_dataset):
+        splits = split_dataset(full_dataset, seed=42)
+        total = sum(len(splits[s]) for s in ("train", "val", "test"))
+        train_frac = len(splits["train"]) / total
+        val_frac = len(splits["val"]) / total
+        test_frac = len(splits["test"]) / total
+        # Per-mechanism rounding means this is approximate, not exact.
+        assert 0.75 <= train_frac <= 0.85
+        assert 0.05 <= val_frac <= 0.15
+        assert 0.05 <= test_frac <= 0.15

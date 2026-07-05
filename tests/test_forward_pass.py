@@ -35,8 +35,12 @@ def input_dim_for_mode(injection_mode: str) -> int:
 
 
 def make_batch() -> dict[str, torch.Tensor]:
-    """Deterministic dummy batch mirroring AMRDataset's collated output shapes."""
-    torch.manual_seed(0)
+    """Dummy batch mirroring AMRDataset's collated output shapes.
+
+    Does not seed the RNG itself -- callers seed once, before any module
+    construction, so both model weight init and this batch are reproducible
+    from the same fixed point (see test_forward_and_backward).
+    """
     return {
         "drug_class_labels": (torch.rand(BATCH_SIZE, NUM_DRUG_CLASSES) > 0.7).float(),
         "resistance_mechanism": torch.randint(0, NUM_MECHANISMS, (BATCH_SIZE,)),
@@ -55,6 +59,9 @@ class TestFullPipeline:
 
     @pytest.mark.parametrize("esm2", ["internal", "external"], indirect=True)
     def test_forward_and_backward(self, esm2):
+        # Seed before constructing any module so weight init is reproducible too,
+        # not just the dummy batch below.
+        torch.manual_seed(0)
         soft_prompt = SoftPromptModule(NUM_MECHANISMS, NUM_DRUG_CLASSES, EMBED_DIM)
         classifier = ClassifierHead(
             input_dim=input_dim_for_mode(esm2.injection_mode),
