@@ -1,0 +1,21 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/cpu_server/"
+
+model:
+  esm2_variant: "facebook/esm2_t30_150M_UR50D"
+  device: "cpu"
+  # No training/gradient-update runs happen on the CPU server (CLAUDE.md
+  # escalation rules) -- this config is for pipeline/shape validation via
+  # inference only, so injection_mode is arbitrary here; validation scripts
+  # should exercise both modes explicitly rather than relying on this default.
+  injection_mode: "internal"
+
+training:
+  # CLAUDE.md caps CPU-server inference at batch <= 8 (150M model).
+  batch_size: 8
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"

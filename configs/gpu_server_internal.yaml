@@ -2,12 +2,15 @@ paths:
   card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
   card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
   aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
-  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/"
+  # Separate from gpu_server_external.yaml's output_dir so the two ablations
+  # never overwrite each other's checkpoint.
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/internal/"
 
 model:
-  esm2_variant: "esm2_t33_650M_UR50D"
+  esm2_variant: "facebook/esm2_t33_650M_UR50D"
   device: "cuda"
-  # The only field that differs from gpu_server_external.yaml.
+  # Along with output_dir above, the only fields that differ from
+  # gpu_server_external.yaml.
   injection_mode: "internal"
 
 training:

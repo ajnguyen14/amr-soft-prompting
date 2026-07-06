@@ -73,7 +73,13 @@ class TestLoadConfig:
         config = load_config(_INTERNAL_CONFIG)
         assert isinstance(config["training"]["learning_rate"], float)
 
-    def test_internal_and_external_differ_only_in_injection_mode(self):
+    def test_internal_and_external_differ_only_in_injection_mode_and_output_dir(self):
+        """injection_mode and paths.output_dir are the only intentional differences.
+
+        output_dir must differ so the two ablations never overwrite each
+        other's checkpoint; everything else must stay in lockstep so this
+        remains a controlled A/B comparison.
+        """
         internal = load_config(_INTERNAL_CONFIG)
         external = load_config(_EXTERNAL_CONFIG)
         assert internal["model"]["injection_mode"] != external["model"]["injection_mode"]
@@ -85,7 +91,13 @@ class TestLoadConfig:
         assert internal_without_mode == external_without_mode
 
         assert internal["training"] == external["training"]
-        assert internal["paths"] == external["paths"]
+
+        assert internal["paths"]["output_dir"] != external["paths"]["output_dir"]
+        internal_paths_without_output_dir = {**internal["paths"]}
+        external_paths_without_output_dir = {**external["paths"]}
+        del internal_paths_without_output_dir["output_dir"]
+        del external_paths_without_output_dir["output_dir"]
+        assert internal_paths_without_output_dir == external_paths_without_output_dir
 
     def test_missing_config_file_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
