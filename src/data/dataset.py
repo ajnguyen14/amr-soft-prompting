@@ -1,11 +1,17 @@
 """PyTorch Dataset wrapping CARDRecord objects from card_parser.py."""
 
+import pickle
 import random
+from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
 
 from src.data.card_parser import CARDRecord
+
+# Shared between scripts/preprocess_card.py (writer) and src/training/train.py
+# (reader) so the two never drift on filename or on-disk format.
+SPLIT_ARTIFACT_FILENAME = "card_splits.pkl"
 
 
 class AMRDataset(Dataset):
@@ -205,3 +211,52 @@ def split_dataset(
         result[accession_to_split[accession]].extend(accession_records)
 
     return result
+
+
+def save_split_artifact(
+    splits: dict[str, list[CARDRecord]],
+    label_vocabularies: dict[str, list[str]],
+    output_dir: str | Path,
+) -> Path:
+    """Serialize a train/val/test split and its label vocabularies to `output_dir`.
+
+    Args:
+        splits: Dict with keys 'train', 'val', 'test' from split_dataset.
+        label_vocabularies: Dict from card_parser.get_label_vocabularies.
+        output_dir: Directory to write the artifact into; created if missing.
+
+    Returns:
+        Path to the written artifact file.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = output_dir / SPLIT_ARTIFACT_FILENAME
+
+    with open(artifact_path, "wb") as fh:
+        pickle.dump({"splits": splits, "label_vocabularies": label_vocabularies}, fh)
+
+    return artifact_path
+
+
+def load_split_artifact(
+    output_dir: str | Path,
+) -> tuple[dict[str, list[CARDRecord]], dict[str, list[str]]] | None:
+    """Load a previously saved split artifact from `output_dir`, if one exists.
+
+    Args:
+        output_dir: Directory to look for the artifact in (same value passed
+            to save_split_artifact).
+
+    Returns:
+        (splits, label_vocabularies) matching save_split_artifact's inputs, or
+        None if no artifact is present at `output_dir` (caller should fall
+        back to re-parsing raw CARD via card_parser.load_card_dataset).
+    """
+    artifact_path = Path(output_dir) / SPLIT_ARTIFACT_FILENAME
+    if not artifact_path.exists():
+        return None
+
+    with open(artifact_path, "rb") as fh:
+        artifact = pickle.load(fh)
+
+    return artifact["splits"], artifact["label_vocabularies"]

@@ -1,0 +1,20 @@
+paths:
+  card_fasta: "data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "data/raw/card.json"
+  aro_index: "data/raw/aro_index.tsv"
+  output_dir: "outputs/local/"
+
+model:
+  esm2_variant: "facebook/esm2_t6_8M_UR50D"
+  device: "cpu"
+  # Architecture iteration only (CLAUDE.md: no training/gradient-update runs on
+  # local WSL2) -- injection_mode is arbitrary here; exercise both explicitly
+  # when iterating on soft_prompt.py, same convention as cpu_server.yaml.
+  injection_mode: "internal"
+
+training:
+  # Smallest model tier -- keep the batch small for fast local iteration.
+  batch_size: 4
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"

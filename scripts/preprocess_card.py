@@ -12,7 +12,6 @@ Usage:
 """
 
 import argparse
-import pickle
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,15 +22,13 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data.card_parser import get_label_vocabularies, load_card_dataset
-from src.data.dataset import split_dataset
+from src.data.dataset import save_split_artifact, split_dataset
 from src.utils.config import load_config
 
 # Project-wide default (CLAUDE.md Reproducibility Requirements). Matches
 # src/training/train.py's SEED so the split produced here is identical to the
 # one train.py would derive on its own.
 SEED = 42
-
-_ARTIFACT_FILENAME = "card_splits.pkl"
 
 
 def preprocess(config: dict[str, Any]) -> Path:
@@ -52,12 +49,7 @@ def preprocess(config: dict[str, Any]) -> Path:
     label_vocabularies = get_label_vocabularies(records)
     splits = split_dataset(records, seed=SEED)
 
-    output_dir = Path(config["paths"]["output_dir"])
-    output_dir.mkdir(parents=True, exist_ok=True)
-    artifact_path = output_dir / _ARTIFACT_FILENAME
-
-    with open(artifact_path, "wb") as fh:
-        pickle.dump({"splits": splits, "label_vocabularies": label_vocabularies}, fh)
+    artifact_path = save_split_artifact(splits, label_vocabularies, config["paths"]["output_dir"])
 
     _print_summary(splits, label_vocabularies, artifact_path)
     return artifact_path

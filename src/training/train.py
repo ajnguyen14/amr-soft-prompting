@@ -15,7 +15,7 @@ import wandb
 from torch.utils.data import DataLoader
 
 from src.data.card_parser import CARDRecord, get_label_vocabularies, load_card_dataset
-from src.data.dataset import AMRDataset, split_dataset
+from src.data.dataset import AMRDataset, load_split_artifact, split_dataset
 from src.eval.metrics import compute_metrics
 from src.models.classifier import ClassifierHead
 from src.models.esm2_wrapper import ESM2Wrapper
@@ -32,6 +32,33 @@ def set_seed(seed: int = SEED) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def _dataloaders_from_splits(
+    splits: dict[str, list[CARDRecord]],
+    label_vocabularies: dict[str, list[str]],
+    batch_size: int,
+) -> tuple[DataLoader, DataLoader, DataLoader, dict[str, list[str]]]:
+    """Build train/val/test DataLoaders from an already-computed split.
+
+    Args:
+        splits: Dict with keys 'train', 'val', 'test', e.g. from split_dataset
+            or a preprocessed split artifact.
+        label_vocabularies: Dict from get_label_vocabularies.
+        batch_size: Batch size shared by all three DataLoaders.
+
+    Returns:
+        (train_loader, val_loader, test_loader, label_vocabularies). Only
+        train_loader shuffles.
+    """
+    loaders = {}
+    for split_name in ("train", "val", "test"):
+        dataset = AMRDataset(splits[split_name], label_vocabularies)
+        loaders[split_name] = DataLoader(
+            dataset, batch_size=batch_size, shuffle=(split_name == "train")
+        )
+
+    return loaders["train"], loaders["val"], loaders["test"], label_vocabularies
 
 
 def build_dataloaders_from_records(
@@ -53,29 +80,33 @@ def build_dataloaders_from_records(
     """
     label_vocabularies = get_label_vocabularies(records)
     splits = split_dataset(records, seed=SEED)
-
-    loaders = {}
-    for split_name in ("train", "val", "test"):
-        dataset = AMRDataset(splits[split_name], label_vocabularies)
-        loaders[split_name] = DataLoader(
-            dataset, batch_size=batch_size, shuffle=(split_name == "train")
-        )
-
-    return loaders["train"], loaders["val"], loaders["test"], label_vocabularies
+    return _dataloaders_from_splits(splits, label_vocabularies, batch_size)
 
 
 def build_dataloaders(
     config: dict[str, Any],
 ) -> tuple[DataLoader, DataLoader, DataLoader, dict[str, list[str]]]:
-    """Load CARD records from config's paths, then build DataLoaders from them.
+    """Build DataLoaders for `config`, preferring a preprocessed split artifact.
+
+    If scripts/preprocess_card.py has already been run for this config's
+    output_dir, its pickled split + label vocabularies are loaded directly so
+    training never re-parses raw CARD or re-derives the split. Otherwise falls
+    back to parsing config's paths directly (e.g. for quick local iteration
+    without running preprocessing first).
 
     Args:
         config: Merged config dict from load_config, with a 'paths' section
-            (card_fasta, aro_index, card_json) and 'training.batch_size'.
+            (card_fasta, aro_index, card_json, output_dir) and
+            'training.batch_size'.
 
     Returns:
         Same as build_dataloaders_from_records.
     """
+    artifact = load_split_artifact(config["paths"]["output_dir"])
+    if artifact is not None:
+        splits, label_vocabularies = artifact
+        return _dataloaders_from_splits(splits, label_vocabularies, config["training"]["batch_size"])
+
     records = load_card_dataset(
         config["paths"]["card_fasta"],
         config["paths"]["aro_index"],
