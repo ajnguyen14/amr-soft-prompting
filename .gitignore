@@ -1,3 +1,7 @@
+# Outputs - checkpoints, logs, wandb cache (CLAUDE.md: never commit)
+outputs/
+wandb/
+
 # Data files - never commit raw database downloads
 data/raw/
 data/processed/
