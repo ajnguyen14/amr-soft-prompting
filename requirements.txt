@@ -3,7 +3,7 @@ fair-esm
 transformers
 biopython
 pyyaml
-wandb
+wandb==0.28.0
 pytest
 numpy
 pandas
