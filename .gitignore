@@ -61,6 +61,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Host-specific ops scripts (not part of the reproducible pipeline)
+scripts/check_memory_headroom.sh
+scripts/wait_and_run.sh
+
 # Results (optional - uncomment if you don't want to track outputs)
 # results/
 # *.log

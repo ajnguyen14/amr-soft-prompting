@@ -1,5 +1,5 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-07-09 00:00_
+_Last updated: 2026-07-09 14:37_
 
 ## Current Version
 
@@ -21,8 +21,11 @@ now in a state where a fresh clone can run `preprocess_card.py` then
 - Config layer: 100% (`base.yaml` + all four per-environment overrides +
   `load_config` merge utility, all done and tested; `gpu_server_internal.yaml`/
   `gpu_server_external.yaml` confirmed to already have separate `output_dir`s,
-  the one intentional exception to the "mirror every field" rule)
-- Training layer: 100% (`loss.py` + `train.py`, both done and tested)
+  the one intentional exception to the "mirror every field" rule; `local.yaml`
+  now populated per the local WSL2 tier, no longer an empty stub)
+- Training layer: 100% (`loss.py` + `train.py`, both done and tested;
+  `train.py` now loads the preprocessed split artifact from
+  `preprocess_card.py` when present instead of re-parsing raw CARD every run)
 - Eval layer: 100% (`metrics.py` + `evaluate.py`, both done and tested —
   confusion matrices + per-class breakdown for `resistance_mechanism`/
   `drug_class`, aggregate + top-confused-pairs for the 398-class
@@ -63,6 +66,10 @@ now in a state where a fresh clone can run `preprocess_card.py` then
   validates every epoch, logs to wandb, checkpoints only on best val loss.
   Entry point: `python -m src.training.train --config configs/gpu_server_internal.yaml`
   (now also reachable via `scripts/run_training.py`, see below).
+  `build_dataloaders` now loads the split artifact `preprocess_card.py` writes
+  (via new `load_split_artifact` in `dataset.py`) when present, falling back
+  to re-parsing raw CARD only if it isn't — closes the gap noted in the prior
+  session where the two scripts didn't actually share the split.
 - `src/eval/evaluate.py` — CLI: `python -m src.eval.evaluate --config <path>
   --checkpoint <path>`. Rebuilds the exact test split/model via `train.py`'s
   own builders, reuses `metrics.py` for aggregate numbers. Full confusion
@@ -73,32 +80,34 @@ now in a state where a fresh clone can run `preprocess_card.py` then
   size). Every run writes a self-contained `evaluation_results.json`
   (checkpoint path, full config, timestamp, all metrics) as the reproducibility
   artifact. No wandb logging — a point-in-time report, not a run to log.
-- `scripts/preprocess_card.py` (new this session) — CLI: `python
+- `scripts/preprocess_card.py` — CLI: `python
   scripts/preprocess_card.py --config <path>`. Loads raw CARD files per
   config, runs `load_card_dataset` + `get_label_vocabularies` +
   `split_dataset` (same `SEED=42` as `train.py`), and pickles
-  `{splits, label_vocabularies}` to `<output_dir>/card_splits.pkl`. Prints
-  per-split record counts and vocab sizes on completion. Manually verified
-  against real CARD data via `configs/cpu_server.yaml`: reproduced the known
-  4839/601/612 split and 38/10/398 vocab sizes exactly.
-- `scripts/run_training.py` (new this session) — thin CLI wrapper: `python
+  `{splits, label_vocabularies}` to `<output_dir>/card_splits.pkl` via the new
+  shared `save_split_artifact` helper in `dataset.py`. Prints per-split record
+  counts and vocab sizes on completion. Manually verified against real CARD
+  data via `configs/cpu_server.yaml`: reproduced the known 4839/601/612 split
+  and 38/10/398 vocab sizes exactly.
+- `scripts/run_training.py` — thin CLI wrapper: `python
   scripts/run_training.py --config <path>` calls `load_config` then
   `src.training.train.train()` directly, no new logic. Verified via `--help`
   and import resolution; a full training run was not exercised here since
   gradient-update training belongs on the GPU server per CLAUDE.md's
   escalation rules, not the CPU server this was written on.
-  Note: `train.py`'s own `build_dataloaders` still re-parses and re-splits
-  CARD from the raw files internally (deterministically, so results are
-  unaffected) — it does not yet read `preprocess_card.py`'s pickled artifact.
-  Wiring `train.py` to consume `card_splits.pkl` directly (skipping re-parse)
-  is a natural follow-up if CARD parsing time becomes a bottleneck, but was
-  out of scope for this session's ask.
+  `train.py`'s `build_dataloaders` now consumes `preprocess_card.py`'s
+  pickled split artifact directly via `load_split_artifact` when it exists at
+  the configured `output_dir`, closing the gap flagged in the prior session
+  (previously it silently re-parsed and re-split raw CARD every run instead).
 - `src/utils/config.py` (`load_config`) — deep-merges an environment config
   over `configs/base.yaml`.
 - `configs/base.yaml`, `configs/cpu_server.yaml`, `configs/gpu_server_internal.yaml`,
-  `configs/gpu_server_external.yaml` — all four real and validated.
-  `configs/local.yaml` is still an empty stub (not yet needed — no local-only
-  work has required it).
+  `configs/gpu_server_external.yaml`, `configs/local.yaml` — all five real and
+  validated. `local.yaml` was previously an empty stub (silently fell back to
+  `base.yaml` alone and crashed any script reading model/paths config); now
+  populated per CLAUDE.md's local WSL2 tier (8M model, CPU, small batch).
+- `requirements.txt` — `wandb` pinned to `0.28.0`, matching the installed
+  version.
 - `tests/` — 135/135 passing (data pipeline + dataset/split + esm2_wrapper +
   soft_prompt + classifier + config loader + metrics + train.py + evaluate.py,
   both injection modes throughout).
@@ -147,25 +156,35 @@ training runs, blocked on the driver fix (see below).
 
 ## Recent Changes
 
-1. **`scripts/preprocess_card.py` implemented** — the CLAUDE.md-mandated
+1. **`train.py` wired to consume `preprocess_card.py`'s preprocessed split**
+   — added `save_split_artifact`/`load_split_artifact` to `dataset.py`,
+   shared by both scripts; `build_dataloaders` now loads the pickled split
+   when present instead of re-parsing and re-splitting raw CARD on every
+   run. Closes the gap flagged in the prior session.
+2. **`configs/local.yaml` populated** — was an empty file, so
+   `--config configs/local.yaml` silently fell back to `base.yaml` alone and
+   crashed any script reading model/paths config. Filled in per CLAUDE.md's
+   local WSL2 tier (8M model, CPU, small batch).
+3. **`requirements.txt`: `wandb` pinned to `0.28.0`**, the installed version.
+4. **`scripts/preprocess_card.py` implemented** — the CLAUDE.md-mandated
    single-entry-point preprocessing script. Parses raw CARD files, splits,
    and pickles the result plus label vocabularies to `output_dir`; prints a
    record-count/vocab-size summary. Verified against real CARD data.
-2. **`scripts/run_training.py` implemented** — thin wrapper making the
+5. **`scripts/run_training.py` implemented** — thin wrapper making the
    CLAUDE.md-documented `python scripts/run_training.py --config ...`
    invocation actually work; delegates entirely to `src/training/train.py`.
-3. **Fixed a script-execution import gap surfaced while building the above:**
+6. **Fixed a script-execution import gap surfaced while building the above:**
    plain `python scripts/<name>.py` execution puts only `scripts/` on
    `sys.path`, not the repo root, so `from src... import ...` failed until
    both scripts added the same `sys.path.insert(parent-of-scripts)` pattern
    `conftest.py` already used for pytest.
-4. **Confirmed `gpu_server_internal.yaml`/`gpu_server_external.yaml` already
+7. **Confirmed `gpu_server_internal.yaml`/`gpu_server_external.yaml` already
    have separate `output_dir`s** (`outputs/internal/`, `outputs/external/`)
    from a prior session's fix — no change needed, correctly the one
    intentional exception to the config-mirroring rule.
-5. **Re-verified the GPU server's CUDA breakage is unchanged** (driver
+8. **Re-verified the GPU server's CUDA breakage is unchanged** (driver
    mismatch, missing `nvidia-smi`) as of 2026-07-09 — prompted the decision
    to move training execution to a different server rather than continue
    waiting on the system-level fix.
-6. **`src/eval/evaluate.py` implemented and tested** (prior session) — full
+9. **`src/eval/evaluate.py` implemented and tested** (prior session) — full
    V1 holdout evaluation, confusion matrices, JSON reproducibility artifact.
