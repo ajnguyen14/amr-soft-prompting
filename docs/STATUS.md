@@ -10,7 +10,9 @@ dataset with the 150M model. **Still blocked on the GPU server's driver
 setup** for the actual 650M training runs — see Open Questions / Blockers.
 Aidan is moving execution to a different (CUDA-capable) server; the repo is
 now in a state where a fresh clone can run `preprocess_card.py` then
-`run_training.py` end to end without manual steps.
+`run_training.py` end to end without manual steps. `prodigal_runner.py`
+(nucleotide → AA translation) was explicitly deferred to V2, despite being
+listed under V1 in CLAUDE.md's roadmap — see What's Not Started.
 
 ## Completion
 
@@ -127,8 +129,13 @@ training runs, blocked on the driver fix (see below).
 
 ## What's Not Started
 
-1. **`src/data/prodigal_runner.py`** — nucleotide → AA translation (needed for
-   real-genome inference, not required for CARD FASTA training)
+1. **`src/data/prodigal_runner.py`** — nucleotide → AA translation. Still an
+   empty stub. CLAUDE.md's roadmap lists this under V1, but Aidan explicitly
+   deferred it to V2 (2026-07-09): V1 training/eval only ever consumes CARD's
+   pre-translated amino acid FASTA, so Prodigal isn't actually needed to reach
+   full V1 functional completion — it only matters for running inference on
+   raw, unannotated nucleotide genomes rather than CARD's curated protein set.
+   Pick this up first when V2 work starts.
 
 ## Open Questions / Blockers
 
@@ -156,35 +163,39 @@ training runs, blocked on the driver fix (see below).
 
 ## Recent Changes
 
-1. **`train.py` wired to consume `preprocess_card.py`'s preprocessed split**
+1. **`prodigal_runner.py` explicitly deferred to V2** — Aidan's call
+   (2026-07-09), even though CLAUDE.md's roadmap lists Prodigal gene-calling
+   under V1. Not needed for CARD-FASTA training/eval; only matters for
+   real-genome inference. Remains an empty stub until V2 starts.
+2. **`train.py` wired to consume `preprocess_card.py`'s preprocessed split**
    — added `save_split_artifact`/`load_split_artifact` to `dataset.py`,
    shared by both scripts; `build_dataloaders` now loads the pickled split
    when present instead of re-parsing and re-splitting raw CARD on every
    run. Closes the gap flagged in the prior session.
-2. **`configs/local.yaml` populated** — was an empty file, so
+3. **`configs/local.yaml` populated** — was an empty file, so
    `--config configs/local.yaml` silently fell back to `base.yaml` alone and
    crashed any script reading model/paths config. Filled in per CLAUDE.md's
    local WSL2 tier (8M model, CPU, small batch).
-3. **`requirements.txt`: `wandb` pinned to `0.28.0`**, the installed version.
-4. **`scripts/preprocess_card.py` implemented** — the CLAUDE.md-mandated
+4. **`requirements.txt`: `wandb` pinned to `0.28.0`**, the installed version.
+5. **`scripts/preprocess_card.py` implemented** — the CLAUDE.md-mandated
    single-entry-point preprocessing script. Parses raw CARD files, splits,
    and pickles the result plus label vocabularies to `output_dir`; prints a
    record-count/vocab-size summary. Verified against real CARD data.
-5. **`scripts/run_training.py` implemented** — thin wrapper making the
+6. **`scripts/run_training.py` implemented** — thin wrapper making the
    CLAUDE.md-documented `python scripts/run_training.py --config ...`
    invocation actually work; delegates entirely to `src/training/train.py`.
-6. **Fixed a script-execution import gap surfaced while building the above:**
+7. **Fixed a script-execution import gap surfaced while building the above:**
    plain `python scripts/<name>.py` execution puts only `scripts/` on
    `sys.path`, not the repo root, so `from src... import ...` failed until
    both scripts added the same `sys.path.insert(parent-of-scripts)` pattern
    `conftest.py` already used for pytest.
-7. **Confirmed `gpu_server_internal.yaml`/`gpu_server_external.yaml` already
+8. **Confirmed `gpu_server_internal.yaml`/`gpu_server_external.yaml` already
    have separate `output_dir`s** (`outputs/internal/`, `outputs/external/`)
    from a prior session's fix — no change needed, correctly the one
    intentional exception to the config-mirroring rule.
-8. **Re-verified the GPU server's CUDA breakage is unchanged** (driver
+9. **Re-verified the GPU server's CUDA breakage is unchanged** (driver
    mismatch, missing `nvidia-smi`) as of 2026-07-09 — prompted the decision
    to move training execution to a different server rather than continue
    waiting on the system-level fix.
-9. **`src/eval/evaluate.py` implemented and tested** (prior session) — full
-   V1 holdout evaluation, confusion matrices, JSON reproducibility artifact.
+10. **`src/eval/evaluate.py` implemented and tested** (prior session) — full
+    V1 holdout evaluation, confusion matrices, JSON reproducibility artifact.
