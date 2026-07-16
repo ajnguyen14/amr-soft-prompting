@@ -59,6 +59,16 @@ class ESM2Wrapper(nn.Module):
 
         self.embed_dim: int = self.esm.config.hidden_size
 
+        if injection_mode == "internal":
+            # Internal mode backprops through all encoder layers to reach
+            # soft_prompt_vectors, retaining every layer's activations for a
+            # full 650M-parameter, 33-layer stack — OOMs at batch_size 32.
+            # Enables HF's per-layer checkpointing machinery on each EsmLayer;
+            # actually engaging it at call time additionally requires flipping
+            # each layer's `.training` flag (see _forward_internal), since
+            # this codebase keeps ESM-2 in eval() throughout.
+            self.esm.gradient_checkpointing_enable()
+
     @property
     def device(self) -> torch.device:
         """Device the ESM-2 model is on."""
@@ -163,7 +173,30 @@ class ESM2Wrapper(nn.Module):
         # Run through the frozen ESM-2 encoder. inputs_embeds bypasses the
         # embedding layer (already applied above); RoPE position IDs are
         # auto-generated as 0..N+L-1 for the combined sequence.
-        outputs = self.esm(inputs_embeds=combined_embeds, attention_mask=extended_attn)
+        #
+        # HF's per-layer gradient checkpointing (enabled in __init__) only
+        # activates on a layer when that layer's own `.training` is True —
+        # but this codebase always calls esm.eval() (see train.py) to keep
+        # frozen ESM-2's dropout off, which recursively sets `.training =
+        # False` on every submodule including each EsmLayer. So we flip just
+        # the EsmLayer submodules' `.training` back to True here — a direct
+        # attribute set, NOT a recursive `.train()` call — so only the
+        # per-layer checkpointing gate engages; every dropout submodule stays
+        # at whatever eval() left it. This is numerically inert regardless:
+        # hidden_dropout_prob and attention_probs_dropout_prob are both 0.0
+        # for all four ESM-2 variants this project uses (8M/150M/650M/3B),
+        # confirmed via AutoConfig for each.
+        #
+        # Without this, internal mode backprops through all encoder layers to
+        # reach soft_prompt_vectors, retaining every layer's activations for
+        # a full 650M-parameter, 33-layer stack — OOMs at batch_size 32.
+        for layer in self.esm.encoder.layer:
+            layer.training = True
+        try:
+            outputs = self.esm(inputs_embeds=combined_embeds, attention_mask=extended_attn)
+        finally:
+            for layer in self.esm.encoder.layer:
+                layer.training = False
         hidden_states = outputs.last_hidden_state  # (B, N+L, D)
 
         # Build pooling mask in the extended sequence space:

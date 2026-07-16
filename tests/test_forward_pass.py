@@ -95,3 +95,37 @@ class TestFullPipeline:
             assert param.grad is None or param.grad.abs().sum() == 0, (
                 f"ESM-2 param {name} unexpectedly received a nonzero gradient"
             )
+
+
+class TestGradientCheckpointing:
+    """Regression guard for the internal-mode OOM fix (see esm2_wrapper.py).
+
+    Internal mode backprops through all encoder layers to reach
+    soft_prompt_vectors, which OOMs on the real 650M model at the configured
+    batch size without per-layer gradient checkpointing. The fix flips each
+    EsmLayer's `.training` flag (not a recursive `.train()` call) to engage
+    HF's built-in checkpointing while leaving dropout untouched -- these
+    tests guard the two ways that could silently break.
+    """
+
+    def test_enabled_only_for_internal_mode(self):
+        internal = ESM2Wrapper(MODEL_NAME, injection_mode="internal")
+        external = ESM2Wrapper(MODEL_NAME, injection_mode="external")
+        assert internal.esm.encoder.gradient_checkpointing is True
+        assert external.esm.encoder.gradient_checkpointing is False
+
+    def test_layer_training_flag_resets_after_forward(self):
+        torch.manual_seed(0)
+        esm2 = ESM2Wrapper(MODEL_NAME, injection_mode="internal")
+        soft_prompt = SoftPromptModule(NUM_MECHANISMS, NUM_DRUG_CLASSES, EMBED_DIM)
+        batch = make_batch()
+        soft_prompt_vectors = soft_prompt(
+            batch["resistance_mechanism"], batch["drug_class_labels"]
+        )
+
+        esm2(SEQUENCES, soft_prompt_vectors)
+
+        assert all(not layer.training for layer in esm2.esm.encoder.layer), (
+            "EsmLayer.training should reset to False after forward() returns -- "
+            "it's only flipped True transiently to engage per-layer checkpointing"
+        )

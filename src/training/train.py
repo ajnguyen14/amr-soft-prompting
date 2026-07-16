@@ -292,10 +292,20 @@ def train(config: dict[str, Any]) -> None:
         config["training"]["optimizer"], trainable_params, config["training"]["learning_rate"]
     )
 
+    # gradient_checkpointing is derived from injection_mode (see esm2_wrapper.py),
+    # not an independent hyperparameter — logged for run-to-run visibility only,
+    # so it's added to the wandb snapshot without mutating the loaded config.
+    wandb_config = {
+        **config,
+        "model": {
+            **config["model"],
+            "gradient_checkpointing": config["model"]["injection_mode"] == "internal",
+        },
+    }
     wandb.init(
         project=config["logging"]["wandb_project"],
         name=config["logging"]["wandb_run_name"],
-        config=config,
+        config=wandb_config,
     )
 
     output_dir = Path(config["paths"]["output_dir"])
