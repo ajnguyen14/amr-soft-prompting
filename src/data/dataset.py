@@ -28,7 +28,11 @@ class AMRDataset(Dataset):
 
     resistance_mechanism and amr_gene_family are genuinely single-label — each
     CARD entry has exactly one mechanism and one gene family — so they are encoded
-    as plain integer indices for use with CrossEntropyLoss downstream.
+    as plain integer indices. amr_gene_family is used with CrossEntropyLoss
+    downstream; resistance_mechanism is not scored by any loss -- it's consumed
+    only as SoftPromptModule conditioning input (see docs/STATUS.md's
+    label-leakage note for why it was deliberately excluded as a prediction
+    target).
 
     Collation note
     --------------

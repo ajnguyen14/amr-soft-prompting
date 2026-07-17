@@ -1,4 +1,4 @@
-"""MLP classification head: shared trunk with three task-specific output heads."""
+"""MLP classification head: shared trunk feeding a single amr_gene_family output head."""
 
 import torch
 import torch.nn as nn

@@ -1,4 +1,4 @@
-"""Combined multi-task loss for AMR gene classification."""
+"""amr_gene_family loss used to train the V1 model."""
 
 import torch
 import torch.nn as nn

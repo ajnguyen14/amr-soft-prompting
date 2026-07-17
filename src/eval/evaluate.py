@@ -117,9 +117,9 @@ def top_confused_pairs(cm: np.ndarray, labels: list[str], top_n: int) -> list[di
 
 
 def evaluate_amr_gene_family(
-    predictions: dict[str, torch.Tensor], vocab: list[str], eval_dir: Path
+    predictions: dict[str, torch.Tensor], vocab: list[str], eval_dir: Path, accuracy: float
 ) -> dict[str, Any]:
-    """Aggregate accuracy/macro-F1 + top-confused pairs for the 398-class amr_gene_family task.
+    """Macro-F1 + top-confused pairs for the 398-class amr_gene_family task.
 
     The full confusion matrix is dumped as CSV for offline analysis but never
     rendered -- a 398x398 heatmap isn't readable or poster-usable.
@@ -128,6 +128,9 @@ def evaluate_amr_gene_family(
         predictions: Output of collect_predictions.
         vocab: label_vocabularies['amr_gene_family'] (398 classes).
         eval_dir: Directory to write the raw confusion-matrix CSV into.
+        accuracy: amr_gene_family accuracy, as already computed by
+            compute_metrics in evaluate() -- passed in rather than
+            recomputed here so the two never diverge.
 
     Returns:
         Dict with keys 'accuracy', 'macro_f1', 'top_confused_pairs', and
@@ -136,7 +139,6 @@ def evaluate_amr_gene_family(
     y_true = predictions["amr_gene_family_labels"].numpy()
     y_pred = predictions["amr_gene_family_logits"].argmax(dim=-1).numpy()
 
-    accuracy = float((y_true == y_pred).mean())
     macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
     cm = confusion_matrix(y_true, y_pred, labels=list(range(len(vocab))))
 
@@ -204,7 +206,10 @@ def evaluate(config: dict[str, Any], checkpoint_path: Path) -> dict[str, Any]:
         "timestamp": timestamp,
         "aggregate": aggregate,
         "amr_gene_family": evaluate_amr_gene_family(
-            predictions, label_vocabularies["amr_gene_family"], eval_dir
+            predictions,
+            label_vocabularies["amr_gene_family"],
+            eval_dir,
+            aggregate["amr_gene_family_accuracy"],
         ),
     }
 
