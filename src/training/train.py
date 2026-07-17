@@ -146,8 +146,6 @@ def build_models(
         input_dim=esm2.output_dim(SoftPromptModule.NUM_PROMPT_TOKENS),
         hidden_dim=config["classifier"]["hidden_dim"],
         dropout=config["classifier"]["dropout"],
-        num_drug_classes=num_drug_classes,
-        num_mechanisms=num_mechanisms,
         num_families=num_families,
     ).to(device)
 
@@ -217,10 +215,8 @@ def run_epoch(
             batch. If None, this is an evaluation epoch: no gradient updates.
 
     Returns:
-        Dict of epoch-averaged values: 'total', 'drug_class',
-        'resistance_mechanism', 'amr_gene_family' (all losses), plus
-        'resistance_mechanism_accuracy', 'amr_gene_family_accuracy', and
-        'drug_class_f1_micro' from compute_metrics.
+        Dict of epoch-averaged values: 'total', 'amr_gene_family' (loss), plus
+        'amr_gene_family_accuracy' from compute_metrics.
     """
     is_train = optimizer is not None
     soft_prompt.train(is_train)
@@ -229,12 +225,8 @@ def run_epoch(
 
     totals = {
         "total": 0.0,
-        "drug_class": 0.0,
-        "resistance_mechanism": 0.0,
         "amr_gene_family": 0.0,
-        "resistance_mechanism_accuracy": 0.0,
         "amr_gene_family_accuracy": 0.0,
-        "drug_class_f1_micro": 0.0,
     }
     n_batches = 0
 
@@ -257,12 +249,8 @@ def run_epoch(
             metrics = compute_metrics(logits, batch)
 
             totals["total"] += losses["total"].item()
-            totals["drug_class"] += losses["drug_class"].item()
-            totals["resistance_mechanism"] += losses["resistance_mechanism"].item()
             totals["amr_gene_family"] += losses["amr_gene_family"].item()
-            totals["resistance_mechanism_accuracy"] += metrics["resistance_mechanism_accuracy"]
             totals["amr_gene_family_accuracy"] += metrics["amr_gene_family_accuracy"]
-            totals["drug_class_f1_micro"] += metrics["drug_class_f1_micro"]
             n_batches += 1
 
     return {key: value / n_batches for key, value in totals.items()}
@@ -271,9 +259,8 @@ def run_epoch(
 def train(config: dict[str, Any]) -> None:
     """Run the full V1 training loop.
 
-    Trains and validates every epoch, logs all three individual loss terms
-    (drug_class, resistance_mechanism, amr_gene_family) plus total loss and
-    accuracy/F1 metrics to wandb, and checkpoints only on a new best total
+    Trains and validates every epoch, logs the amr_gene_family loss plus total
+    loss and accuracy to wandb, and checkpoints only on a new best total
     validation loss. ESM-2's own weights are never checkpointed — they're
     frozen and fully determined by config['model']['esm2_variant'].
 

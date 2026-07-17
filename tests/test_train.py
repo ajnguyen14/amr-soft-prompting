@@ -84,11 +84,7 @@ def _make_config(
             "optimizer": "adam",
         },
         "classifier": {"hidden_dim": 16, "dropout": 0.1},
-        "loss": {
-            "weight_drug_class": 1.0,
-            "weight_resistance_mechanism": 1.0,
-            "weight_amr_gene_family": 1.0,
-        },
+        "loss": {"weight_amr_gene_family": 1.0},
         "logging": {"wandb_project": "test-project", "wandb_run_name": "test-run"},
     }
 
@@ -168,10 +164,7 @@ class TestRunEpoch:
             classifier.parameters()
         ), 1e-3)
         metrics = run_epoch(train_loader, esm2, soft_prompt, classifier, loss_fn, "cpu", optimizer)
-        expected_keys = {
-            "total", "drug_class", "resistance_mechanism", "amr_gene_family",
-            "resistance_mechanism_accuracy", "amr_gene_family_accuracy", "drug_class_f1_micro",
-        }
+        expected_keys = {"total", "amr_gene_family", "amr_gene_family_accuracy"}
         assert set(metrics.keys()) == expected_keys
         for value in metrics.values():
             assert torch.isfinite(torch.tensor(value))

@@ -53,11 +53,7 @@ class TestLoadConfig:
     def test_classifier_and_loss_sections_inherited_from_base(self):
         config = load_config(_INTERNAL_CONFIG)
         assert config["classifier"] == {"hidden_dim": 512, "dropout": 0.1}
-        assert config["loss"] == {
-            "weight_drug_class": 1.0,
-            "weight_resistance_mechanism": 1.0,
-            "weight_amr_gene_family": 1.0,
-        }
+        assert config["loss"] == {"weight_amr_gene_family": 1.0}
 
     def test_hyperparameters_are_v1_defaults(self):
         for config_path in (_INTERNAL_CONFIG, _EXTERNAL_CONFIG):

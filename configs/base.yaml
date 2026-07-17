@@ -14,8 +14,6 @@ classifier:
   dropout: 0.1
 
 loss:
-  weight_drug_class: 1.0
-  weight_resistance_mechanism: 1.0
   weight_amr_gene_family: 1.0
 
 logging:

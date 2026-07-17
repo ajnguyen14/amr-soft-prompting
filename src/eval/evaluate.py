@@ -5,8 +5,12 @@ Usage:
         --checkpoint outputs/best_model.pt
 
 Runs the frozen ESM-2 + soft prompt + classifier pipeline over the CARD test
-split (never train/val) and writes a self-contained JSON results file plus
-confusion-matrix figures to `<output_dir>/eval/`. Builds on
+split (never train/val) and writes a self-contained JSON results file plus a
+raw confusion-matrix CSV for the amr_gene_family task to `<output_dir>/eval/`.
+resistance_mechanism and drug_class are not evaluated here -- both are fed
+into the soft prompt as conditioning input rather than predicted, so scoring
+them would just measure how well the classifier decodes its own soft-prompt
+embedding (see docs/STATUS.md's label-leakage note). Builds on
 `src.eval.metrics.compute_metrics` for aggregate numbers rather than
 recomputing accuracy/F1 a second way, and reuses `src.training.train`'s
 dataloader/model construction so eval and training never diverge on how data
@@ -23,36 +27,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import matplotlib
-
-matplotlib.use("Agg")  # headless servers only -- never display interactively.
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
-from sklearn.metrics import (
-    classification_report,
-    confusion_matrix,
-    f1_score,
-    multilabel_confusion_matrix,
-)
+from sklearn.metrics import confusion_matrix, f1_score
 from torch.utils.data import DataLoader
 
-from src.eval.metrics import DRUG_CLASS_THRESHOLD, compute_metrics
+from src.eval.metrics import compute_metrics
 from src.models.classifier import ClassifierHead
 from src.models.esm2_wrapper import ESM2Wrapper
 from src.models.soft_prompt import SoftPromptModule
 from src.training.train import SEED, build_dataloaders, build_models, move_batch_to_device, set_seed
 from src.utils.config import load_config
 
-# amr_gene_family has 398 classes (vs. 10 for resistance_mechanism, 38 for
-# drug_class) -- too many for a readable confusion matrix, so it gets
-# aggregate accuracy/macro-F1 plus this many top-confused (true, predicted)
-# pairs instead of a rendered matrix.
+# amr_gene_family has 398 classes -- too many for a readable confusion
+# matrix, so it gets aggregate accuracy/macro-F1 plus this many top-confused
+# (true, predicted) pairs instead of a rendered matrix.
 TOP_CONFUSED_PAIRS = 10
-
-# Multi-label confusion-matrix grid: number of per-label 2x2 heatmaps per row.
-CONFUSION_GRID_NCOLS = 6
 
 
 @torch.no_grad()
@@ -77,21 +67,16 @@ def collect_predictions(
         device: Torch device string.
 
     Returns:
-        Dict with keys '{task}_logits' and '{task}_labels' for each of
-        resistance_mechanism, amr_gene_family, drug_class -- each a single
-        CPU tensor concatenated over the full loader.
+        Dict with keys 'amr_gene_family_logits' and 'amr_gene_family_labels',
+        each a single CPU tensor concatenated over the full loader.
     """
     esm2.eval()
     soft_prompt.eval()
     classifier.eval()
 
     collected: dict[str, list[torch.Tensor]] = {
-        "resistance_mechanism_logits": [],
-        "resistance_mechanism_labels": [],
         "amr_gene_family_logits": [],
         "amr_gene_family_labels": [],
-        "drug_class_logits": [],
-        "drug_class_labels": [],
     }
 
     for batch in loader:
@@ -100,79 +85,10 @@ def collect_predictions(
         pooled = esm2(batch["sequence"], soft_prompt_vectors)
         logits = classifier(pooled)
 
-        collected["resistance_mechanism_logits"].append(logits["resistance_mechanism"].cpu())
-        collected["resistance_mechanism_labels"].append(batch["resistance_mechanism"].cpu())
         collected["amr_gene_family_logits"].append(logits["amr_gene_family"].cpu())
         collected["amr_gene_family_labels"].append(batch["amr_gene_family"].cpu())
-        collected["drug_class_logits"].append(logits["drug_class"].cpu())
-        collected["drug_class_labels"].append(batch["drug_class_labels"].cpu())
 
     return {key: torch.cat(tensors, dim=0) for key, tensors in collected.items()}
-
-
-def plot_confusion_matrix(cm: np.ndarray, labels: list[str], title: str, output_path: Path) -> None:
-    """Render a single-label confusion matrix as a heatmap PNG.
-
-    Args:
-        cm: (num_labels, num_labels) confusion matrix, rows=true, cols=predicted.
-        labels: Class names in the same order as `cm`'s rows/columns.
-        title: Plot title.
-        output_path: Where to save the PNG. Parent directory must already exist.
-    """
-    side = max(6.0, 0.5 * len(labels))
-    fig, ax = plt.subplots(figsize=(side, side))
-    sns.heatmap(
-        cm,
-        annot=len(labels) <= 15,
-        fmt="d",
-        cmap="Blues",
-        xticklabels=labels,
-        yticklabels=labels,
-        ax=ax,
-    )
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.set_title(title)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
-    plt.close(fig)
-
-
-def plot_multilabel_confusion_grid(mcm: np.ndarray, labels: list[str], output_path: Path) -> None:
-    """Render a grid of per-label 2x2 confusion matrices for a multi-label task.
-
-    Args:
-        mcm: (num_labels, 2, 2) array from sklearn's multilabel_confusion_matrix.
-        labels: Class names, one per entry in `mcm`.
-        output_path: Where to save the PNG. Parent directory must already exist.
-    """
-    n = len(labels)
-    nrows = -(-n // CONFUSION_GRID_NCOLS)  # ceil division
-    fig, axes = plt.subplots(
-        nrows, CONFUSION_GRID_NCOLS, figsize=(CONFUSION_GRID_NCOLS * 2.2, nrows * 2.2)
-    )
-    axes = np.atleast_1d(axes).flatten()
-
-    for i, label in enumerate(labels):
-        sns.heatmap(
-            mcm[i],
-            annot=True,
-            fmt="d",
-            cmap="Blues",
-            cbar=False,
-            xticklabels=["Pred 0", "Pred 1"],
-            yticklabels=["True 0", "True 1"],
-            ax=axes[i],
-        )
-        axes[i].set_title(label, fontsize=8)
-
-    for ax in axes[n:]:
-        ax.axis("off")
-
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
-    plt.close(fig)
 
 
 def top_confused_pairs(cm: np.ndarray, labels: list[str], top_n: int) -> list[dict[str, Any]]:
@@ -198,74 +114,6 @@ def top_confused_pairs(cm: np.ndarray, labels: list[str], top_n: int) -> list[di
         {"true": true_label, "predicted": pred_label, "count": count}
         for count, true_label, pred_label in pairs[:top_n]
     ]
-
-
-def evaluate_resistance_mechanism(
-    predictions: dict[str, torch.Tensor], vocab: list[str], eval_dir: Path
-) -> dict[str, Any]:
-    """Full confusion matrix + per-class precision/recall/F1 for resistance_mechanism.
-
-    Args:
-        predictions: Output of collect_predictions.
-        vocab: label_vocabularies['resistance_mechanism'] (10 classes).
-        eval_dir: Directory to write the confusion-matrix PNG into.
-
-    Returns:
-        Dict with keys 'confusion_matrix' (nested list) and 'per_class'
-        (sklearn classification_report output_dict).
-    """
-    y_true = predictions["resistance_mechanism_labels"].numpy()
-    y_pred = predictions["resistance_mechanism_logits"].argmax(dim=-1).numpy()
-    label_ids = list(range(len(vocab)))
-
-    cm = confusion_matrix(y_true, y_pred, labels=label_ids)
-    report = classification_report(
-        y_true, y_pred, labels=label_ids, target_names=vocab, output_dict=True, zero_division=0
-    )
-
-    plot_confusion_matrix(
-        cm,
-        vocab,
-        title="Resistance Mechanism Confusion Matrix",
-        output_path=eval_dir / "confusion_matrix_resistance_mechanism.png",
-    )
-
-    return {"confusion_matrix": cm.tolist(), "per_class": report}
-
-
-def evaluate_drug_class(
-    predictions: dict[str, torch.Tensor], vocab: list[str], eval_dir: Path
-) -> dict[str, Any]:
-    """Full per-label confusion matrices + precision/recall/F1 for multi-label drug_class.
-
-    Thresholded at DRUG_CLASS_THRESHOLD (0.5), matching compute_metrics so the
-    aggregate F1 and this per-class breakdown never disagree on what counts as
-    a positive prediction.
-
-    Args:
-        predictions: Output of collect_predictions.
-        vocab: label_vocabularies['drug_class'] (38 classes).
-        eval_dir: Directory to write the confusion-matrix grid PNG into.
-
-    Returns:
-        Dict with keys 'per_class' (sklearn classification_report output_dict)
-        and 'confusion_matrices' (per-label 2x2 matrix, keyed by class name).
-    """
-    probs = torch.sigmoid(predictions["drug_class_logits"]).numpy()
-    y_pred = (probs > DRUG_CLASS_THRESHOLD).astype(int)
-    y_true = predictions["drug_class_labels"].numpy().astype(int)
-
-    report = classification_report(
-        y_true, y_pred, target_names=vocab, output_dict=True, zero_division=0
-    )
-    mcm = multilabel_confusion_matrix(y_true, y_pred)
-
-    plot_multilabel_confusion_grid(mcm, vocab, eval_dir / "confusion_matrix_drug_class.png")
-
-    return {
-        "per_class": report,
-        "confusion_matrices": {label: mcm[i].tolist() for i, label in enumerate(vocab)},
-    }
 
 
 def evaluate_amr_gene_family(
@@ -321,7 +169,7 @@ def evaluate(config: dict[str, Any], checkpoint_path: Path) -> dict[str, Any]:
     Returns:
         The same results dict written to '<output_dir>/eval/.../evaluation_results.json':
         keys 'checkpoint', 'checkpoint_epoch', 'eval_dir', 'config', 'timestamp',
-        'aggregate', 'resistance_mechanism', 'drug_class', 'amr_gene_family'.
+        'aggregate', 'amr_gene_family'.
     """
     set_seed(SEED)
     device = config["model"]["device"]
@@ -336,16 +184,8 @@ def evaluate(config: dict[str, Any], checkpoint_path: Path) -> dict[str, Any]:
     predictions = collect_predictions(test_loader, esm2, soft_prompt, classifier, device)
 
     aggregate = compute_metrics(
-        logits={
-            "resistance_mechanism": predictions["resistance_mechanism_logits"],
-            "amr_gene_family": predictions["amr_gene_family_logits"],
-            "drug_class": predictions["drug_class_logits"],
-        },
-        batch={
-            "resistance_mechanism": predictions["resistance_mechanism_labels"],
-            "amr_gene_family": predictions["amr_gene_family_labels"],
-            "drug_class_labels": predictions["drug_class_labels"],
-        },
+        logits={"amr_gene_family": predictions["amr_gene_family_logits"]},
+        batch={"amr_gene_family": predictions["amr_gene_family_labels"]},
     )
 
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -363,10 +203,6 @@ def evaluate(config: dict[str, Any], checkpoint_path: Path) -> dict[str, Any]:
         "config": config,
         "timestamp": timestamp,
         "aggregate": aggregate,
-        "resistance_mechanism": evaluate_resistance_mechanism(
-            predictions, label_vocabularies["resistance_mechanism"], eval_dir
-        ),
-        "drug_class": evaluate_drug_class(predictions, label_vocabularies["drug_class"], eval_dir),
         "amr_gene_family": evaluate_amr_gene_family(
             predictions, label_vocabularies["amr_gene_family"], eval_dir
         ),

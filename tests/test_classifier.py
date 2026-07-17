@@ -13,8 +13,6 @@ INPUT_DIM_INTERNAL = 320  # embed_dim, as in 'internal' injection mode
 N_PROMPT_TOKENS = 2
 INPUT_DIM_EXTERNAL = INPUT_DIM_INTERNAL + N_PROMPT_TOKENS * INPUT_DIM_INTERNAL  # 'external' mode
 HIDDEN_DIM = 64
-NUM_DRUG_CLASSES = 10
-NUM_MECHANISMS = 5
 NUM_FAMILIES = 20
 DROPOUT = 0.1
 
@@ -25,8 +23,6 @@ def make_classifier(input_dim: int) -> ClassifierHead:
         input_dim=input_dim,
         hidden_dim=HIDDEN_DIM,
         dropout=DROPOUT,
-        num_drug_classes=NUM_DRUG_CLASSES,
-        num_mechanisms=NUM_MECHANISMS,
         num_families=NUM_FAMILIES,
     )
 
@@ -41,8 +37,6 @@ class TestOutputShapeInternal:
         classifier = make_classifier(INPUT_DIM_INTERNAL)
         x = torch.randn(batch_size, INPUT_DIM_INTERNAL)
         out = classifier(x)
-        assert out["drug_class"].shape == (batch_size, NUM_DRUG_CLASSES)
-        assert out["resistance_mechanism"].shape == (batch_size, NUM_MECHANISMS)
         assert out["amr_gene_family"].shape == (batch_size, NUM_FAMILIES)
 
 
@@ -56,8 +50,6 @@ class TestOutputShapeExternal:
         classifier = make_classifier(INPUT_DIM_EXTERNAL)
         x = torch.randn(batch_size, INPUT_DIM_EXTERNAL)
         out = classifier(x)
-        assert out["drug_class"].shape == (batch_size, NUM_DRUG_CLASSES)
-        assert out["resistance_mechanism"].shape == (batch_size, NUM_MECHANISMS)
         assert out["amr_gene_family"].shape == (batch_size, NUM_FAMILIES)
 
 
@@ -70,8 +62,7 @@ class TestOutputDtype:
         classifier = make_classifier(INPUT_DIM_INTERNAL)
         x = torch.randn(2, INPUT_DIM_INTERNAL)
         out = classifier(x)
-        for key in ("drug_class", "resistance_mechanism", "amr_gene_family"):
-            assert out[key].dtype == torch.float32
+        assert out["amr_gene_family"].dtype == torch.float32
 
 
 # ---------------------------------------------------------------------------
@@ -79,11 +70,11 @@ class TestOutputDtype:
 # ---------------------------------------------------------------------------
 
 class TestOutputKeys:
-    def test_returns_all_three_heads(self):
+    def test_returns_only_amr_gene_family_head(self):
         classifier = make_classifier(INPUT_DIM_INTERNAL)
         x = torch.randn(2, INPUT_DIM_INTERNAL)
         out = classifier(x)
-        assert set(out.keys()) == {"drug_class", "resistance_mechanism", "amr_gene_family"}
+        assert set(out.keys()) == {"amr_gene_family"}
 
 
 # ---------------------------------------------------------------------------

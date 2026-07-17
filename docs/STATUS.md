@@ -1,132 +1,120 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-07-15 21:40_
+_Last updated: 2026-07-17 (spark-833c)_
 
 ## Current Version
 
-**V1 — Core Pipeline**, code complete, both ablation runs trained to
-completion, and both now evaluated via `src/eval/evaluate.py`. What remains
-is the cross-ablation write-up for the poster.
+**V1 — Core Pipeline**, code complete and just re-fixed for label leakage.
+Both ablation checkpoints from the prior session are now stale and need
+retraining before the poster comparison table can be trusted.
 
 ## Completion
 
-**~100% of V1 execution.** Both ablation configs (`configs/gpu_server_internal.yaml`,
-`configs/gpu_server_external.yaml`) have completed all 50 epochs and both
-checkpoints have been scored on the CARD test holdout.
-
-- External ablation (`configs/gpu_server_external.yaml`): **done and evaluated.**
-  50/50 epochs, wandb run `cerulean-donkey-1`
-  (https://wandb.ai/aidan-j-nguyen-san-jose-state-university/amr-soft-prompting/runs/snm1i141),
-  checkpoint at `outputs/external/best_model.pt` (best val loss at epoch 44).
-- Internal ablation (`configs/gpu_server_internal.yaml`): **done and evaluated.**
-  50/50 epochs, wandb run `internal ablation v1`
-  (https://wandb.ai/aidan-j-nguyen-san-jose-state-university/amr-soft-prompting/runs/zz67qllg),
-  checkpoint at `outputs/internal/best_model.pt` (best val loss at epoch 49,
-  the final epoch). Ran continuously 2026-07-11 00:59 → 2026-07-15 14:42
-  (~4.57 days wall-clock, matching the earlier ~2.5-day-plus-contention
-  estimate) with the gradient-checkpointing fix in place — no further OOMs.
-- `src/eval/evaluate.py` has now been run against both checkpoints. Results
-  written to `outputs/{internal,external}/eval/best_model_<timestamp>/`
-  (JSON + confusion-matrix figures for resistance_mechanism and drug_class,
-  aggregate + top-confused-pairs for the 398-class amr_gene_family task).
-
-  | Metric | Internal (epoch 49) | External (epoch 44) |
-  |---|---|---|
-  | resistance_mechanism accuracy | 0.980 | 0.998 |
-  | amr_gene_family accuracy | 0.835 | 0.873 |
-  | amr_gene_family macro-F1 | 0.486 | 0.559 |
-  | drug_class F1 (micro) | 0.913 | 0.999 |
-
-  External injection outperforms internal on every metric, most sharply on
-  drug_class F1. Not yet interpreted for the poster write-up — see What's Not
-  Started.
+**V1 code is ~100% complete**, but the trained artifacts are not: the
+label-leakage fix below changes `ClassifierHead`'s parameter shapes, so both
+`outputs/{internal,external}/best_model.pt` checkpoints (50/50 epochs, scored
+in the last session) no longer load against the current model code and need
+to be retrained from scratch. Retraining has **not** been started yet (held
+off deliberately, pending a decision on when to spend the multi-day GPU time).
 
 ## What's Working
 
-Everything listed in the prior status entry still holds (`card_parser.py`,
-`dataset.py` split/`AMRDataset`, `esm2_wrapper.py`, `soft_prompt.py`,
-`classifier.py`, `loss.py`, `metrics.py`, `train.py`, `evaluate.py`,
-`preprocess_card.py`, `run_training.py`, `load_config`, all five configs).
-New this session:
+Everything listed in the prior status entry still holds structurally
+(`card_parser.py`, `dataset.py` split/`AMRDataset`, `esm2_wrapper.py`,
+`soft_prompt.py`, `preprocess_card.py`, `run_training.py`, `load_config`, all
+five configs), plus this session's fix:
 
-- **Both ablation training runs are complete** — external finished last
-  session; internal finished this session (50/50 epochs, no OOM) after
-  running continuously since the gradient-checkpointing fix landed.
-- **`src/eval/evaluate.py` run end-to-end for the first time**, against both
-  checkpoints, on `spark-833c` (GPU server, per CLAUDE.md's escalation rule
-  for 650M-model inference). Produces aggregate metrics, confusion matrices
-  for resistance_mechanism/drug_class, and top-confused-pairs for
-  amr_gene_family.
-- `src/models/esm2_wrapper.py`'s internal-mode gradient-checkpointing
-  approach was reworked from the manual `torch.utils.checkpoint.checkpoint`
-  wrap (recorded in the last status entry) to HF's built-in
-  `esm.gradient_checkpointing_enable()`, engaged by temporarily flipping each
-  `EsmLayer.training` flag to `True` around the forward call (the model is
-  otherwise kept in `eval()` throughout, per the frozen-ESM-2 constraint).
-  Numerically inert either way — dropout is 0.0 for all four ESM-2 variants
-  this project uses. New regression tests in `test_forward_pass.py`
-  (`TestGradientCheckpointing`) guard that checkpointing is on only for
-  internal mode and that the `.training` flag resets after `forward()`
-  returns.
-- `scripts/_check_external_wandb_state.py` — small helper (used by
-  `scripts/check_memory_headroom.sh`) that prints the wandb state of the
-  latest external-ablation run; not a user-facing entry point.
+- **Label-leakage fix landed.** `resistance_mechanism` and `drug_class` are
+  no longer classifier prediction targets — `SoftPromptModule` still
+  conditions on their ground-truth values (unchanged, still the intended
+  "known metadata as context" design), but `ClassifierHead` now has only an
+  `amr_gene_family_head`, `AMRLoss` only scores `amr_gene_family`, and
+  `compute_metrics`/`evaluate.py` only report `amr_gene_family_accuracy`
+  (+ macro-F1, top-confused-pairs, confusion-matrix CSV in `evaluate.py`).
+  This makes V1's remaining question ("does internal or external injection
+  work better") measurable on a task that isn't circular: the model has to
+  actually read the ESM-2 sequence representation to predict gene family,
+  since gene family is never fed into the soft prompt.
+- Files touched: `src/models/classifier.py`, `src/training/loss.py`,
+  `src/eval/metrics.py`, `src/training/train.py` (`build_models`/`run_epoch`),
+  `src/eval/evaluate.py` (deleted `evaluate_resistance_mechanism`,
+  `evaluate_drug_class`, `plot_confusion_matrix`,
+  `plot_multilabel_confusion_grid` — all dead code once those two heads were
+  removed), `configs/base.yaml` (`loss:` section now just
+  `weight_amr_gene_family`). `soft_prompt.py` itself is untouched.
+- All 5 smoke test modules touching this surface
+  (`test_classifier.py`, `test_metrics.py`, `test_train.py`,
+  `test_evaluate.py`, `test_forward_pass.py`, `test_config.py`) updated to
+  match. Full suite: **133/133 passing** on spark-833c (CPU-side smoke tests,
+  8M model).
 
 ## What's In Progress
 
-- Cross-ablation write-up (internal vs. external) for the poster, now
-  unblocked — both runs trained and evaluated, results tabulated above.
+- Nothing actively running. Next action is a decision on when to spend the
+  GPU time to retrain both ablations against the fixed classifier.
 
 ## What's Not Started
 
-1. **`src/data/prodigal_runner.py`** — nucleotide → AA translation. Still an
+1. **Retraining both ablation configs** (`configs/gpu_server_internal.yaml`,
+   `configs/gpu_server_external.yaml`) against the fixed `ClassifierHead`.
+   Both prior checkpoints are now unusable. Historically ~2.2 days
+   (external) / ~4.6 days (internal) wall-clock on spark-833c.
+2. **`src/data/prodigal_runner.py`** — nucleotide → AA translation. Still an
    empty stub, explicitly deferred to V2 by Aidan (2026-07-09): V1
    training/eval only ever consumes CARD's pre-translated amino acid FASTA,
    so this isn't needed for V1 functional completeness.
-2. Poster write-up itself — interpreting *why* external injection
-   outperforms internal (e.g. whether it's an artifact of the
-   gradient-checkpointing path only internal mode needs, vs. a genuine
-   architectural effect) and drafting the narrative/figures.
-3. Deciding whether the ~4.5-day internal run time (vs. external's ~2.2 days)
-   is worth investigating further or is an acceptable one-time training cost
-   given V1 is inference/eval-bound going forward.
+3. Poster write-up — now blocked on the retrain above, since the only
+   ablation numbers that exist (from the pre-fix runs) measured a leaked
+   signal and shouldn't be used.
 
 ## Open Questions / Blockers
 
-- **Is internal mode's clear underperformance (esp. drug_class F1: 0.913 vs
-  0.999) a real architectural finding, or confounded by the
-  gradient-checkpointing path?** Checkpointing changes memory/compute
-  tradeoffs, not numerics, so it shouldn't explain the gap directly — but
-  it's the one asymmetry between how the two runs trained, worth a sentence
-  in the poster's limitations if the gap is highlighted as a finding.
+- **Label leakage — fixed in code, not yet re-measured.** Previously:
+  `resistance_mechanism`/`drug_class` were both fed into `SoftPromptModule`
+  as conditioning input *and* scored as classifier prediction targets, so
+  those two metrics measured how well the classifier decoded its own
+  soft-prompt embedding rather than anything learned from the sequence.
+  Fixed this session by dropping both as prediction targets — `amr_gene_family`
+  is now the only classifier output, matching the one task that was never fed
+  into the soft prompt. This was a scoped decision (see conversation
+  2026-07-17): keep `soft_prompt.py`'s conditioning inputs unchanged (no PI
+  sign-off needed, since the "novel contribution" module itself wasn't
+  touched), and only trim the classifier/loss/metrics/eval surface. The
+  previous internal-vs-external comparison table (resistance_mechanism
+  accuracy, amr_gene_family accuracy/macro-F1, drug_class F1) is retired —
+  only amr_gene_family accuracy/macro-F1 will be reported going forward, and
+  that requires both ablations to be retrained.
+- **V2 scope update (2026-07-17, Aidan's decision, not yet in CLAUDE.md):**
+  TA loci (TADB 3.0) is being pulled forward from V3 into V2, alongside
+  RefSeq — V2 will map CARD metadata + TA loci onto RefSeq. CLAUDE.md's
+  Versioned Roadmap section still lists TA loci as V3-only; Aidan is updating
+  it himself. Relevant to a future soft-prompt redesign: TA loci + RefSeq
+  signal is a candidate for soft-prompt conditioning that doesn't overlap
+  with CARD prediction targets, avoiding this same class of leakage
+  structurally rather than by dropping tasks.
+- **Is internal mode's underperformance real or confounded by
+  gradient-checkpointing?** Unresolved from before, and now moot until
+  retrained on the fixed classifier — the prior gap was measured partly on
+  leaked metrics.
 - **`spark-833c` is a shared, unified-memory box** — GPU memory pool is the
   same pool as system RAM (`nvidia-smi` reports device-level `Memory-Usage`
-  as "Not Supported" for this reason). Relevant if any further runs are
-  launched on it; not currently blocking anything since both ablations are
-  done.
+  as "Not Supported" for this reason). Relevant whenever retraining starts.
 - `docs/reviews/2026-07-05-classifier-loss-review.md` — remaining deferred
   items are low-severity doc/style nitpicks; unchanged.
 
 ## Recent Changes
 
-1. **Internal ablation (`internal ablation v1`, zz67qllg) completed all 50
-   epochs** — ran continuously 2026-07-11 00:59 → 2026-07-15 14:42
-   (~4.57 days, wandb-reported runtime 394968s) with no further OOMs after
-   the gradient-checkpointing fix. Checkpoint at `outputs/internal/best_model.pt`
-   (epoch 49).
-2. **`src/eval/evaluate.py` run for the first time**, against both
-   `outputs/internal/best_model.pt` and `outputs/external/best_model.pt`, on
-   `spark-833c`. Wrote JSON results + confusion-matrix figures to
-   `outputs/{internal,external}/eval/`.
-3. **First cross-ablation comparison available**: external injection beats
-   internal on all three metrics tracked (resistance_mechanism accuracy,
-   amr_gene_family accuracy/macro-F1, drug_class F1-micro), most sharply on
-   drug_class F1 (0.999 vs 0.913).
-4. **Gradient-checkpointing implementation reworked** from a manual
-   `torch.utils.checkpoint.checkpoint` wrap to HF's built-in
-   `gradient_checkpointing_enable()` plus a transient `EsmLayer.training`
-   flag flip, since the model is kept in `eval()` throughout and the
-   built-in switch only engages when a layer's own `.training` is `True`.
-   Covered by new regression tests in `test_forward_pass.py`.
-5. V1 execution is now essentially complete: both ablations trained and
-   evaluated; remaining work is the poster write-up, not further code or
-   training.
+1. **Label-leakage fix**: removed `resistance_mechanism`/`drug_class` as
+   `ClassifierHead` prediction targets and from `AMRLoss`/`compute_metrics`/
+   `evaluate.py`; `SoftPromptModule` unchanged. `configs/base.yaml`'s `loss:`
+   section trimmed to match.
+2. Updated 6 test files (`test_classifier.py`, `test_metrics.py`,
+   `test_train.py`, `test_evaluate.py`, `test_forward_pass.py`,
+   `test_config.py`) to match the new single-task classifier. Full suite
+   passing (133/133).
+3. Both existing ablation checkpoints (`outputs/{internal,external}/best_model.pt`)
+   are now stale and will need retraining before any new results are
+   reported.
+4. Noted a V2 scope change (TA loci moved from V3 into V2, paired with
+   RefSeq) that Aidan is reflecting in CLAUDE.md separately.
+5. Retraining deliberately not started yet — held off pending a separate
+   go-ahead given the multi-day GPU cost.

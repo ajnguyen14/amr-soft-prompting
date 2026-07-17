@@ -17,8 +17,8 @@ from src.training.loss import AMRLoss
 MODEL_NAME = "facebook/esm2_t6_8M_UR50D"
 EMBED_DIM = 320       # hidden_size for esm2_t6_8M_UR50D
 HIDDEN_DIM = 64
-NUM_MECHANISMS = 5
-NUM_DRUG_CLASSES = 10
+NUM_MECHANISMS = 5  # SoftPromptModule conditioning input only, no longer a classifier head
+NUM_DRUG_CLASSES = 10  # SoftPromptModule conditioning input only, no longer a classifier head
 NUM_FAMILIES = 20
 DROPOUT = 0.1
 BATCH_SIZE = 2
@@ -59,8 +59,6 @@ class TestFullPipeline:
             input_dim=esm2.output_dim(SoftPromptModule.NUM_PROMPT_TOKENS),
             hidden_dim=HIDDEN_DIM,
             dropout=DROPOUT,
-            num_drug_classes=NUM_DRUG_CLASSES,
-            num_mechanisms=NUM_MECHANISMS,
             num_families=NUM_FAMILIES,
         )
         loss_fn = AMRLoss()
@@ -74,12 +72,7 @@ class TestFullPipeline:
         losses = loss_fn(logits, batch)
 
         # --- forward assertions ---
-        assert set(losses.keys()) == {
-            "drug_class",
-            "resistance_mechanism",
-            "amr_gene_family",
-            "total",
-        }
+        assert set(losses.keys()) == {"amr_gene_family", "total"}
         assert losses["total"].dim() == 0
 
         # --- backward assertions ---

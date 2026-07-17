@@ -73,11 +73,7 @@ def _make_config(
             "optimizer": "adam",
         },
         "classifier": {"hidden_dim": 16, "dropout": 0.1},
-        "loss": {
-            "weight_drug_class": 1.0,
-            "weight_resistance_mechanism": 1.0,
-            "weight_amr_gene_family": 1.0,
-        },
+        "loss": {"weight_amr_gene_family": 1.0},
         "logging": {"wandb_project": "test-project", "wandb_run_name": "test-run"},
     }
 
@@ -115,7 +111,7 @@ class TestEvaluate:
 
         assert set(results.keys()) == {
             "checkpoint", "checkpoint_epoch", "eval_dir", "config", "timestamp",
-            "aggregate", "resistance_mechanism", "drug_class", "amr_gene_family",
+            "aggregate", "amr_gene_family",
         }
 
         results_json_path = Path(results["eval_dir"]) / "evaluation_results.json"
@@ -123,24 +119,6 @@ class TestEvaluate:
         with open(results_json_path) as f:
             on_disk = json.load(f)
         assert on_disk["checkpoint"] == results["checkpoint"]
-
-    def test_resistance_mechanism_confusion_matrix_shape(self, trained_checkpoint):
-        config, checkpoint_path = trained_checkpoint
-        results = evaluate(config, checkpoint_path)
-
-        num_mechanisms = 2  # fixture has 2 mechanisms
-        cm = results["resistance_mechanism"]["confusion_matrix"]
-        assert len(cm) == num_mechanisms
-        assert all(len(row) == num_mechanisms for row in cm)
-        assert (Path(results["eval_dir"]) / "confusion_matrix_resistance_mechanism.png").exists()
-
-    def test_drug_class_per_class_breakdown_covers_full_vocab(self, trained_checkpoint):
-        config, checkpoint_path = trained_checkpoint
-        results = evaluate(config, checkpoint_path)
-
-        # Fixture uses a single drug class string ("some antibiotic") for every record.
-        assert set(results["drug_class"]["confusion_matrices"].keys()) == {"some antibiotic"}
-        assert (Path(results["eval_dir"]) / "confusion_matrix_drug_class.png").exists()
 
     def test_amr_gene_family_reports_aggregate_and_csv_not_plot(self, trained_checkpoint):
         config, checkpoint_path = trained_checkpoint
@@ -161,9 +139,7 @@ class TestEvaluate:
         config, checkpoint_path = trained_checkpoint
         results = evaluate(config, checkpoint_path)
 
-        assert set(results["aggregate"].keys()) == {
-            "resistance_mechanism_accuracy", "amr_gene_family_accuracy", "drug_class_f1_micro",
-        }
+        assert set(results["aggregate"].keys()) == {"amr_gene_family_accuracy"}
 
 
 class TestTopConfusedPairs:
