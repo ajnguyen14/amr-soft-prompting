@@ -16,6 +16,14 @@ classifier:
 loss:
   weight_amr_gene_family: 1.0
 
+# tblastn thresholds for mapping CARD proteins onto RefSeq genomic coordinates
+# (V2 TA-proximity pipeline, src/data/blast_runner.py). Conservative defaults
+# per CLAUDE.md; not yet tuned against the real 293-genome coverage numbers.
+blast:
+  min_pident: 95.0
+  min_qcov: 90.0
+  max_evalue: 1.0e-10
+
 logging:
   wandb_project: "amr-soft-prompting"
   wandb_run_name: null  # auto-generated if null

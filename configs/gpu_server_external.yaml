@@ -5,6 +5,9 @@ paths:
   # Separate from gpu_server_internal.yaml's output_dir so the two ablations
   # never overwrite each other's checkpoint.
   output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/external/"
+  refseq_manifest: "/data/aidannguyen/amr-soft-prompting/data/manifests/refseq_species_accessions.json"
+  refseq_genomes_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/refseq_genomes/"
+  refseq_blast_db: "/data/aidannguyen/amr-soft-prompting/data/processed/refseq_blastdb/refseq_blastdb"
 
 model:
   esm2_variant: "facebook/esm2_t33_650M_UR50D"

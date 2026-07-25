@@ -1,0 +1,2053 @@
+[
+  {
+    "species": "achromobacter mucicolens",
+    "accession": "GCF_029866465.1",
+    "organism_name": "Achromobacter mucicolens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "achromobacter sp.",
+    "accession": "GCA_017307435.1",
+    "organism_name": "Achromobacter sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "achromobacter xylosoxidans",
+    "accession": "GCF_016728825.1",
+    "organism_name": "Achromobacter xylosoxidans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter baumannii",
+    "accession": "GCF_009035845.1",
+    "organism_name": "Acinetobacter baumannii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter bereziniae",
+    "accession": "GCF_016576965.1",
+    "organism_name": "Acinetobacter bereziniae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter bouvetii",
+    "accession": "GCF_018324105.1",
+    "organism_name": "Acinetobacter bouvetii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter calcoaceticus",
+    "accession": "GCF_900444805.1",
+    "organism_name": "Acinetobacter calcoaceticus",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter colistiniresistens",
+    "accession": "GCF_000413935.1",
+    "organism_name": "Acinetobacter colistiniresistens",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter guillouiae",
+    "accession": "GCF_002370525.2",
+    "organism_name": "Acinetobacter guillouiae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter gyllenbergii",
+    "accession": "GCF_001682515.1",
+    "organism_name": "Acinetobacter gyllenbergii",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter haemolyticus",
+    "accession": "GCF_003323815.1",
+    "organism_name": "Acinetobacter haemolyticus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter johnsonii",
+    "accession": "GCF_000368805.1",
+    "organism_name": "Acinetobacter johnsonii ANC 3681",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter lwoffii",
+    "accession": "GCF_029024105.1",
+    "organism_name": "Acinetobacter lwoffii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter nosocomialis",
+    "accession": "GCF_041021905.1",
+    "organism_name": "Acinetobacter nosocomialis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter oleivorans",
+    "accession": "GCF_000196795.1",
+    "organism_name": "Acinetobacter oleivorans DR1",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter pittii",
+    "accession": "GCF_000191145.1",
+    "organism_name": "Acinetobacter pittii PHEA-2",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter proteolyticus",
+    "accession": "GCF_000367945.1",
+    "organism_name": "Acinetobacter proteolyticus",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter radioresistens",
+    "accession": "GCF_003258335.1",
+    "organism_name": "Acinetobacter radioresistens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter schindleri",
+    "accession": "GCF_010918895.1",
+    "organism_name": "Acinetobacter schindleri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter seifertii",
+    "accession": "GCF_016064815.1",
+    "organism_name": "Acinetobacter seifertii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter soli",
+    "accession": "GCF_018139125.1",
+    "organism_name": "Acinetobacter soli",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter sp.",
+    "accession": "GCA_965261865.1",
+    "organism_name": "Acinetobacter sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "acinetobacter tandoii",
+    "accession": "GCF_008867985.1",
+    "organism_name": "Acinetobacter tandoii",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "acinetobacter variabilis",
+    "accession": "GCF_030518655.1",
+    "organism_name": "Acinetobacter variabilis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "actinomadura sp.",
+    "accession": "GCA_044507795.1",
+    "organism_name": "Actinomadura sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "aeromicrobium erythreum",
+    "accession": "GCF_001509405.1",
+    "organism_name": "Aeromicrobium erythreum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas allosaccharophila",
+    "accession": "GCF_016026615.1",
+    "organism_name": "Aeromonas allosaccharophila",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas caviae",
+    "accession": "GCF_900476005.1",
+    "organism_name": "Aeromonas caviae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas dhakensis",
+    "accession": "GCF_002285935.1",
+    "organism_name": "Aeromonas dhakensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas enteropelogenes",
+    "accession": "GCF_020097295.1",
+    "organism_name": "Aeromonas enteropelogenes",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas hydrophila",
+    "accession": "GCF_000014805.1",
+    "organism_name": "Aeromonas hydrophila subsp. hydrophila ATCC 7966",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas media",
+    "accession": "GCF_020423125.1",
+    "organism_name": "Aeromonas media",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas salmonicida",
+    "accession": "GCF_028355655.1",
+    "organism_name": "Aeromonas salmonicida",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aeromonas sp.",
+    "accession": "GCA_050252055.1",
+    "organism_name": "Aeromonas sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "aeromonas veronii",
+    "accession": "GCF_008693705.1",
+    "organism_name": "Aeromonas veronii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "agrobacterium fabrum",
+    "accession": "GCF_000092025.1",
+    "organism_name": "Agrobacterium fabrum str. C58",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "alcaligenes faecalis",
+    "accession": "GCF_000967305.2",
+    "organism_name": "Alcaligenes faecalis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aliarcobacter butzleri",
+    "accession": "GCF_000014025.1",
+    "organism_name": "Aliarcobacter butzleri RM4018",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "aliivibrio salmonicida",
+    "accession": "GCF_000196495.1",
+    "organism_name": "Aliivibrio salmonicida LFI1238",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "alkalihalobacillus clausii",
+    "accession": "GCF_034479305.1",
+    "organism_name": "Shouchella clausii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "alkalihalobacillus halodurans",
+    "accession": "GCF_005671335.1",
+    "organism_name": "Halalkalibacterium halodurans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "atlantibacter hermannii",
+    "accession": "GCF_016027855.1",
+    "organism_name": "Atlantibacter hermannii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus amyloliquefaciens",
+    "accession": "GCF_019396925.1",
+    "organism_name": "Bacillus amyloliquefaciens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus anthracis",
+    "accession": "GCF_000008445.1",
+    "organism_name": "Bacillus anthracis str. 'Ames Ancestor'",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus atrophaeus",
+    "accession": "GCF_039519175.1",
+    "organism_name": "Bacillus atrophaeus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus cereus",
+    "accession": "GCF_006094295.1",
+    "organism_name": "Bacillus cereus ATCC 14579",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus licheniformis",
+    "accession": "GCF_034478925.1",
+    "organism_name": "Bacillus licheniformis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus pumilus",
+    "accession": "GCF_000017885.4",
+    "organism_name": "Bacillus pumilus SAFR-032",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus subtilis",
+    "accession": "GCF_000009045.1",
+    "organism_name": "Bacillus subtilis subsp. subtilis str. 168",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacillus thuringiensis",
+    "accession": "GCF_000161615.1",
+    "organism_name": "Bacillus thuringiensis serovar berliner ATCC 10792",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacteroides fragilis",
+    "accession": "GCF_000025985.1",
+    "organism_name": "Bacteroides fragilis NCTC 9343",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bacteroides sp.",
+    "accession": "GCA_022818785.1",
+    "organism_name": "Bacteroides sp.",
+    "assembly_level": "Chromosome",
+    "refseq_category": null
+  },
+  {
+    "species": "bibersteinia trehalosi",
+    "accession": "GCF_000521725.1",
+    "organism_name": "Bibersteinia trehalosi USDA-ARS-USMARC-188",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bifidobacterium adolescentis",
+    "accession": "GCF_000010425.1",
+    "organism_name": "Bifidobacterium adolescentis ATCC 15703",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bifidobacterium breve",
+    "accession": "GCF_001025175.1",
+    "organism_name": "Bifidobacterium breve DSM 20213 = JCM 1192",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bordetella bronchiseptica",
+    "accession": "GCF_900636925.1",
+    "organism_name": "Bordetella bronchiseptica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bordetella hinzii",
+    "accession": "GCF_900637615.1",
+    "organism_name": "Bordetella hinzii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "brachyspira pilosicoli",
+    "accession": "GCF_000143725.1",
+    "organism_name": "Brachyspira pilosicoli 95/1000",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bradyrhizobium diazoefficiens",
+    "accession": "GCF_001642675.1",
+    "organism_name": "Bradyrhizobium diazoefficiens USDA 110",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "bradyrhizobium sp.",
+    "accession": "GCA_900011245.1",
+    "organism_name": "Bradyrhizobium sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "brevibacillus brevis",
+    "accession": "GCF_900637055.1",
+    "organism_name": "Brevibacillus brevis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "brucella anthropi",
+    "accession": "GCF_015326295.1",
+    "organism_name": "Brucella anthropi",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "brucella intermedia",
+    "accession": "GCF_900454225.1",
+    "organism_name": "Brucella intermedia",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "brucella suis",
+    "accession": "GCF_000007505.1",
+    "organism_name": "Brucella suis 1330",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia cenocepacia",
+    "accession": "GCF_001718895.1",
+    "organism_name": "Burkholderia cenocepacia",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia cepacia",
+    "accession": "GCF_009586235.1",
+    "organism_name": "Burkholderia cepacia",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia glumae",
+    "accession": "GCF_000960995.1",
+    "organism_name": "Burkholderia glumae LMG 2196 = ATCC 33617",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia multivorans",
+    "accession": "GCF_036352035.1",
+    "organism_name": "Burkholderia multivorans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia pseudomallei",
+    "accession": "GCF_030297255.1",
+    "organism_name": "Burkholderia pseudomallei",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "burkholderia ubonensis",
+    "accession": "GCF_002097715.1",
+    "organism_name": "Burkholderia ubonensis subsp. mesacidophila",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "buttiauxella agrestis",
+    "accession": "GCF_900446255.1",
+    "organism_name": "Buttiauxella agrestis",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "campylobacter coli",
+    "accession": "GCF_009730395.1",
+    "organism_name": "Campylobacter coli",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "campylobacter fetus",
+    "accession": "GCF_011600945.2",
+    "organism_name": "Campylobacter fetus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "campylobacter jejuni",
+    "accession": "GCF_000009085.1",
+    "organism_name": "Campylobacter jejuni subsp. jejuni NCTC 11168 = ATCC 700819",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "caulobacter vibrioides",
+    "accession": "GCF_000022005.1",
+    "organism_name": "Caulobacter vibrioides NA1000",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "cereibacter sphaeroides",
+    "accession": "GCF_003324715.1",
+    "organism_name": "Cereibacter sphaeroides 2.4.1",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "chryseobacterium sp.",
+    "accession": "GCA_008831505.1",
+    "organism_name": "Chryseobacterium sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "citrobacter amalonaticus",
+    "accession": "GCF_020099335.1",
+    "organism_name": "Citrobacter amalonaticus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter braakii",
+    "accession": "GCF_009648935.1",
+    "organism_name": "Citrobacter braakii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter freundii",
+    "accession": "GCF_904859905.1",
+    "organism_name": "Citrobacter freundii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter koseri",
+    "accession": "GCF_000018045.1",
+    "organism_name": "Citrobacter koseri ATCC BAA-895",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter portucalensis",
+    "accession": "GCF_023374935.1",
+    "organism_name": "Citrobacter portucalensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter sedlakii",
+    "accession": "GCF_018128425.1",
+    "organism_name": "Citrobacter sedlakii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter sp.",
+    "accession": "GCA_036636875.1",
+    "organism_name": "Citrobacter sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "citrobacter werkmanii",
+    "accession": "GCF_008693645.1",
+    "organism_name": "Citrobacter werkmanii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "citrobacter youngae",
+    "accession": "GCF_030294585.1",
+    "organism_name": "Citrobacter youngae",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "clostridioides difficile",
+    "accession": "GCF_018885085.1",
+    "organism_name": "Clostridioides difficile",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "clostridium perfringens",
+    "accession": "GCF_016027375.1",
+    "organism_name": "Clostridium perfringens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "clostridium sp.",
+    "accession": "GCA_022010015.1",
+    "organism_name": "Clostridium sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "comamonas aquatica",
+    "accession": "GCF_018064205.1",
+    "organism_name": "Comamonas aquatica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "corynebacterium glutamicum",
+    "accession": "GCF_000011325.1",
+    "organism_name": "Corynebacterium glutamicum ATCC 13032",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "corynebacterium sp.",
+    "accession": "GCA_057176925.1",
+    "organism_name": "Corynebacterium sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "corynebacterium striatum",
+    "accession": "GCF_016728105.1",
+    "organism_name": "Corynebacterium striatum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "cronobacter sakazakii",
+    "accession": "GCF_003516125.1",
+    "organism_name": "Cronobacter sakazakii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "cupriavidus gilardii",
+    "accession": "GCF_013347325.1",
+    "organism_name": "Cupriavidus gilardii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "cupriavidus taiwanensis",
+    "accession": "GCF_000069785.1",
+    "organism_name": "Cupriavidus taiwanensis LMG 19424",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "delftia acidovorans",
+    "accession": "GCF_000018665.1",
+    "organism_name": "Delftia acidovorans SPH-1",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "desulfitobacterium hafniense",
+    "accession": "GCF_000021925.1",
+    "organism_name": "Desulfitobacterium hafniense DCB-2",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "desulfovibrio desulfuricans",
+    "accession": "GCF_017815575.1",
+    "organism_name": "Desulfovibrio desulfuricans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "elizabethkingia anophelis",
+    "accession": "GCF_002023665.2",
+    "organism_name": "Elizabethkingia anophelis R26",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "empedobacter falsenii",
+    "accession": "GCF_013488205.1",
+    "organism_name": "Empedobacter falsenii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "empedobacter stercoris",
+    "accession": "GCF_014621655.1",
+    "organism_name": "Empedobacter stercoris",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter asburiae",
+    "accession": "GCF_007035805.1",
+    "organism_name": "Enterobacter asburiae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter bugandensis",
+    "accession": "GCF_900324475.1",
+    "organism_name": "Enterobacter bugandensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter cloacae",
+    "accession": "GCF_905331265.2",
+    "organism_name": "Enterobacter cloacae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter hormaechei",
+    "accession": "GCF_019048245.1",
+    "organism_name": "Enterobacter hormaechei",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter huaxiensis",
+    "accession": "GCF_003594935.2",
+    "organism_name": "Enterobacter huaxiensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter kobei",
+    "accession": "GCF_023023125.1",
+    "organism_name": "Enterobacter kobei",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter ludwigii",
+    "accession": "GCF_001750725.1",
+    "organism_name": "Enterobacter ludwigii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter mori",
+    "accession": "GCF_022014715.1",
+    "organism_name": "Enterobacter mori",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter quasiroggenkampii",
+    "accession": "GCF_043972695.1",
+    "organism_name": "Enterobacter quasiroggenkampii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter roggenkampii",
+    "accession": "GCF_001729805.1",
+    "organism_name": "Enterobacter roggenkampii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter sichuanensis",
+    "accession": "GCF_009036245.1",
+    "organism_name": "Enterobacter sichuanensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterobacter sp.",
+    "accession": "GCA_032059205.1",
+    "organism_name": "Enterobacter sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "enterococcus casseliflavus",
+    "accession": "GCF_029215545.1",
+    "organism_name": "Enterococcus casseliflavus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterococcus durans",
+    "accession": "GCF_002277935.1",
+    "organism_name": "Enterococcus durans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterococcus faecalis",
+    "accession": "GCF_000393015.1",
+    "organism_name": "Enterococcus faecalis EnGen0336",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterococcus faecium",
+    "accession": "GCF_009734005.1",
+    "organism_name": "Enterococcus faecium",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterococcus gallinarum",
+    "accession": "GCF_021496385.1",
+    "organism_name": "Enterococcus gallinarum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "enterococcus hirae",
+    "accession": "GCF_016766815.1",
+    "organism_name": "Enterococcus hirae",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "erwinia persicina",
+    "accession": "GCF_019844095.1",
+    "organism_name": "Erwinia persicina",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "erysipelothrix rhusiopathiae",
+    "accession": "GCF_000270085.1",
+    "organism_name": "Erysipelothrix rhusiopathiae str. Fujisawa",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "escherichia coli",
+    "accession": "GCF_000005845.2",
+    "organism_name": "Escherichia coli str. K-12 substr. MG1655",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "exiguobacterium sp.",
+    "accession": "GCA_003535915.1",
+    "organism_name": "Exiguobacterium sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "fusobacterium nucleatum",
+    "accession": "GCF_003019295.1",
+    "organism_name": "Fusobacterium nucleatum subsp. nucleatum ATCC 25586",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "geobacillus stearothermophilus",
+    "accession": "GCF_030339115.1",
+    "organism_name": "Geobacillus stearothermophilus",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "glaesserella parasuis",
+    "accession": "GCF_017352235.1",
+    "organism_name": "Glaesserella parasuis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "haemophilus influenzae",
+    "accession": "GCF_020736045.1",
+    "organism_name": "Haemophilus influenzae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "haemophilus parainfluenzae",
+    "accession": "GCF_016127215.1",
+    "organism_name": "Haemophilus parainfluenzae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "hafnia alvei",
+    "accession": "GCF_011617105.1",
+    "organism_name": "Hafnia alvei",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "helicobacter pylori",
+    "accession": "GCF_025998455.1",
+    "organism_name": "Helicobacter pylori",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "janthinobacterium lividum",
+    "accession": "GCF_013372045.1",
+    "organism_name": "Janthinobacterium lividum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "kitasatospora aureofaciens",
+    "accession": "GCF_014649975.1",
+    "organism_name": "Kitasatospora aureofaciens",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella aerogenes",
+    "accession": "GCF_019048125.1",
+    "organism_name": "Klebsiella aerogenes",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella grimontii",
+    "accession": "GCF_042137965.1",
+    "organism_name": "Klebsiella grimontii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella huaxiensis",
+    "accession": "GCF_003261575.2",
+    "organism_name": "Klebsiella huaxiensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella michiganensis",
+    "accession": "GCF_015139575.1",
+    "organism_name": "Klebsiella michiganensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella oxytoca",
+    "accession": "GCF_900636985.1",
+    "organism_name": "Klebsiella oxytoca",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella pasteurii",
+    "accession": "GCF_018139045.1",
+    "organism_name": "Klebsiella pasteurii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella pneumoniae",
+    "accession": "GCF_000240185.1",
+    "organism_name": "Klebsiella pneumoniae subsp. pneumoniae HS11286",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella quasipneumoniae",
+    "accession": "GCF_020099175.1",
+    "organism_name": "Klebsiella quasipneumoniae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "klebsiella sp.",
+    "accession": "GCA_032481375.1",
+    "organism_name": "Klebsiella sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "klebsiella variicola",
+    "accession": "GCF_020525545.1",
+    "organism_name": "Klebsiella variicola subsp. variicola",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "kluyvera ascorbata",
+    "accession": "GCF_023195735.1",
+    "organism_name": "Kluyvera ascorbata",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "kluyvera intermedia",
+    "accession": "GCF_009649915.1",
+    "organism_name": "Kluyvera intermedia",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "kluyvera sp.",
+    "accession": "GCA_965301105.1",
+    "organism_name": "Kluyvera sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "lactobacillus johnsonii",
+    "accession": "GCF_014058685.1",
+    "organism_name": "Lactobacillus johnsonii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "lactococcus lactis",
+    "accession": "GCF_003176835.1",
+    "organism_name": "Lactococcus lactis subsp. lactis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "laribacter hongkongensis",
+    "accession": "GCF_000423285.1",
+    "organism_name": "Laribacter hongkongensis DSM 14985",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "legionella longbeachae",
+    "accession": "GCF_000091785.1",
+    "organism_name": "Legionella longbeachae NSW150",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "legionella pneumophila",
+    "accession": "GCF_001941585.1",
+    "organism_name": "Legionella pneumophila",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "lelliottia amnigena",
+    "accession": "GCF_019047465.1",
+    "organism_name": "Lelliottia amnigena",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "limosilactobacillus reuteri",
+    "accession": "GCF_020784875.1",
+    "organism_name": "Limosilactobacillus reuteri subsp. simiae",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "listeria monocytogenes",
+    "accession": "GCF_000196035.1",
+    "organism_name": "Listeria monocytogenes EGD-e",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "macrococcus canis",
+    "accession": "GCF_002119805.1",
+    "organism_name": "Macrococcoides canis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "macrococcus caseolyticus",
+    "accession": "GCF_016028795.1",
+    "organism_name": "Macrococcoides caseolyticum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mammaliicoccus lentus",
+    "accession": "GCF_947036595.1",
+    "organism_name": "Mammaliicoccus lentus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mammaliicoccus sciuri",
+    "accession": "GCF_900474615.1",
+    "organism_name": "Mammaliicoccus sciuri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mannheimia haemolytica",
+    "accession": "GCF_002285575.1",
+    "organism_name": "Mannheimia haemolytica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "massilia sp.",
+    "accession": "GCA_036635995.1",
+    "organism_name": "Massilia sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "micrococcus luteus",
+    "accession": "GCF_900475555.1",
+    "organism_name": "Micrococcus luteus NCTC 2665",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "micrococcus sp.",
+    "accession": "GCA_030523875.1",
+    "organism_name": "Micrococcus sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "micromonospora chalcea",
+    "accession": "GCF_028768405.1",
+    "organism_name": "Micromonospora chalcea",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "moraxella catarrhalis",
+    "accession": "GCF_900476075.1",
+    "organism_name": "Moraxella catarrhalis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "moraxella osloensis",
+    "accession": "GCF_001553955.1",
+    "organism_name": "Faucicola osloensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "moraxella sp.",
+    "accession": "GCA_977041285.1",
+    "organism_name": "Moraxella sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "morganella morganii",
+    "accession": "GCF_006094455.1",
+    "organism_name": "Morganella morganii subsp. morganii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycobacterium leprae",
+    "accession": "GCF_003584725.1",
+    "organism_name": "Mycobacterium leprae Kyoto-2",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycobacterium tuberculosis",
+    "accession": "GCF_000195955.2",
+    "organism_name": "Mycobacterium tuberculosis H37Rv",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycobacteroides abscessus",
+    "accession": "GCF_000069185.1",
+    "organism_name": "Mycobacteroides abscessus ATCC 19977",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycolicibacterium fortuitum",
+    "accession": "GCF_022179545.1",
+    "organism_name": "Mycolicibacterium fortuitum subsp. fortuitum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycolicibacterium mageritense",
+    "accession": "GCF_010727475.1",
+    "organism_name": "Mycolicibacterium mageritense",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "mycolicibacterium smegmatis",
+    "accession": "GCF_022370415.1",
+    "organism_name": "Mycolicibacterium smegmatis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "myroides odoratimimus",
+    "accession": "GCF_004337635.1",
+    "organism_name": "Myroides odoratimimus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "neisseria gonorrhoeae",
+    "accession": "GCF_013030075.1",
+    "organism_name": "Neisseria gonorrhoeae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "neisseria meningitidis",
+    "accession": "GCF_022869645.1",
+    "organism_name": "Neisseria meningitidis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "niallia circulans",
+    "accession": "GCF_013267435.1",
+    "organism_name": "Niallia circulans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "nocardia asteroides",
+    "accession": "GCF_900637185.1",
+    "organism_name": "Nocardia asteroides",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "nocardia farcinica",
+    "accession": "GCF_000009805.1",
+    "organism_name": "Nocardia farcinica IFM 10152",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "oligella urethralis",
+    "accession": "GCF_900454345.1",
+    "organism_name": "Oligella urethralis",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "paenibacillus sp.",
+    "accession": "GCA_031180825.1",
+    "organism_name": "Paenibacillus sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "pandoraea apista",
+    "accession": "GCF_001465595.2",
+    "organism_name": "Pandoraea apista",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pandoraea commovens",
+    "accession": "GCF_024704525.1",
+    "organism_name": "Pandoraea commovens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pandoraea norimbergensis",
+    "accession": "GCF_001465545.3",
+    "organism_name": "Pandoraea norimbergensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pandoraea pnomenusa",
+    "accession": "GCF_000504585.2",
+    "organism_name": "Pandoraea pnomenusa",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pandoraea pulmonicola",
+    "accession": "GCF_000815105.2",
+    "organism_name": "Pandoraea pulmonicola",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pandoraea sp.",
+    "accession": "GCA_041919235.1",
+    "organism_name": "Pandoraea sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "pandoraea sputorum",
+    "accession": "GCF_900187205.1",
+    "organism_name": "Pandoraea sputorum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pantoea agglomerans",
+    "accession": "GCF_019048385.1",
+    "organism_name": "Pantoea agglomerans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pantoea sp.",
+    "accession": "GCA_032517305.1",
+    "organism_name": "Pantoea sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "parabacteroides distasonis",
+    "accession": "GCF_018279895.1",
+    "organism_name": "Parabacteroides distasonis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pasteurella multocida",
+    "accession": "GCF_002073255.2",
+    "organism_name": "Pasteurella multocida",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pedobacter sp.",
+    "accession": "GCA_965279535.1",
+    "organism_name": "Pedobacter sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "phocaeicola vulgatus",
+    "accession": "GCF_000012825.1",
+    "organism_name": "Phocaeicola vulgatus ATCC 8482",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "photobacterium damselae",
+    "accession": "GCF_038086725.1",
+    "organism_name": "Photobacterium damselae subsp. damselae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "porphyromonas gingivalis",
+    "accession": "GCF_000010505.1",
+    "organism_name": "Porphyromonas gingivalis ATCC 33277",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "proteus mirabilis",
+    "accession": "GCF_000069965.1",
+    "organism_name": "Proteus mirabilis HI4320",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "proteus penneri",
+    "accession": "GCF_022369495.1",
+    "organism_name": "Proteus penneri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "proteus vulgaris",
+    "accession": "GCF_025200655.1",
+    "organism_name": "Proteus vulgaris",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "providencia rettgeri",
+    "accession": "GCF_019048105.1",
+    "organism_name": "Providencia rettgeri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "providencia sp.",
+    "accession": "GCA_963921545.1",
+    "organism_name": "Providencia sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "providencia stuartii",
+    "accession": "GCF_035747985.1",
+    "organism_name": "Providencia stuartii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas aeruginosa",
+    "accession": "GCF_000006765.1",
+    "organism_name": "Pseudomonas aeruginosa PAO1",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas alcaligenes",
+    "accession": "GCF_001597285.1",
+    "organism_name": "Aquipseudomonas alcaligenes",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas alloputida",
+    "accession": "GCF_021283545.2",
+    "organism_name": "Pseudomonas alloputida",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas asiatica",
+    "accession": "GCF_034358925.1",
+    "organism_name": "Pseudomonas asiatica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas fluorescens",
+    "accession": "GCF_900215245.1",
+    "organism_name": "Pseudomonas fluorescens",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas mosselii",
+    "accession": "GCF_002736065.1",
+    "organism_name": "Pseudomonas mosselii",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas oleovorans",
+    "accession": "GCF_029845265.1",
+    "organism_name": "Ectopseudomonas oleovorans",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas putida",
+    "accession": "GCF_000412675.1",
+    "organism_name": "Pseudomonas putida NBRC 14164",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas shirazica",
+    "accession": "GCF_015168335.1",
+    "organism_name": "Pseudomonas shirazica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas soli",
+    "accession": "GCF_021283165.2",
+    "organism_name": "Pseudomonas soli",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas sp.",
+    "accession": "GCA_032055705.1",
+    "organism_name": "Pseudomonas sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "pseudomonas stutzeri",
+    "accession": "GCF_019704535.1",
+    "organism_name": "Stutzerimonas stutzeri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas syringae",
+    "accession": "GCF_018394375.1",
+    "organism_name": "Pseudomonas syringae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas tohonis",
+    "accession": "GCF_012767755.2",
+    "organism_name": "Pseudomonas tohonis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "pseudomonas wenzhouensis",
+    "accession": "GCF_021029445.1",
+    "organism_name": "Pseudomonas wenzhouensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "rahnella aquatilis",
+    "accession": "GCF_000241955.1",
+    "organism_name": "Rahnella aquatilis CIP 78.65 = ATCC 33071",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "ralstonia insidiosa",
+    "accession": "GCF_001663855.1",
+    "organism_name": "Ralstonia insidiosa",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "ralstonia mannitolilytica",
+    "accession": "GCF_000954135.1",
+    "organism_name": "Ralstonia mannitolilytica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "ralstonia pickettii",
+    "accession": "GCF_014142625.1",
+    "organism_name": "Ralstonia pickettii",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "raoultella ornithinolytica",
+    "accession": "GCF_030505655.1",
+    "organism_name": "Klebsiella ornithinolytica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "raoultella planticola",
+    "accession": "GCF_000783935.2",
+    "organism_name": "Klebsiella planticola",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "raoultella terrigena",
+    "accession": "GCF_012029655.1",
+    "organism_name": "Klebsiella terrigena",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "rheinheimera sp.",
+    "accession": "GCA_059499465.1",
+    "organism_name": "Rheinheimera sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "rhodobacter capsulatus",
+    "accession": "GCF_000021865.1",
+    "organism_name": "Rhodobacter capsulatus SB 1003",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "rhodococcus fascians",
+    "accession": "GCF_030813815.1",
+    "organism_name": "Rhodococcoides fascians",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "rhodococcus hoagii",
+    "accession": "GCF_003013675.1",
+    "organism_name": "Prescottella equi",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "rhodococcus rhodochrous",
+    "accession": "GCF_029457455.1",
+    "organism_name": "Rhodococcus rhodochrous",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "saccharopolyspora erythraea",
+    "accession": "GCF_000062885.1",
+    "organism_name": "Saccharopolyspora erythraea NRRL 2338",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "salmonella enterica",
+    "accession": "GCF_000006945.2",
+    "organism_name": "Salmonella enterica subsp. enterica serovar Typhimurium str. LT2",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "serratia fonticola",
+    "accession": "GCF_001006005.1",
+    "organism_name": "Serratia fonticola",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "serratia marcescens",
+    "accession": "GCF_030291735.1",
+    "organism_name": "Serratia marcescens",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "serratia rubidaea",
+    "accession": "GCF_016026735.1",
+    "organism_name": "Serratia rubidaea",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "serratia ureilytica",
+    "accession": "GCF_017309605.1",
+    "organism_name": "Serratia ureilytica",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella algae",
+    "accession": "GCF_009183365.2",
+    "organism_name": "Shewanella algae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella chilikensis",
+    "accession": "GCF_037953065.1",
+    "organism_name": "Shewanella chilikensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella denitrificans",
+    "accession": "GCF_000013765.1",
+    "organism_name": "Shewanella denitrificans OS217",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella frigidimarina",
+    "accession": "GCF_000014705.1",
+    "organism_name": "Shewanella frigidimarina NCIMB 400",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella livingstonensis",
+    "accession": "GCF_003855395.1",
+    "organism_name": "Shewanella livingstonensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella oneidensis",
+    "accession": "GCF_000146165.2",
+    "organism_name": "Shewanella oneidensis MR-1",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shewanella sp.",
+    "accession": "GCA_036964065.1",
+    "organism_name": "Shewanella sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "shewanella xiamenensis",
+    "accession": "GCF_024971755.1",
+    "organism_name": "Shewanella xiamenensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shigella flexneri",
+    "accession": "GCF_000006925.2",
+    "organism_name": "Shigella flexneri 2a str. 301",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shigella sonnei",
+    "accession": "GCF_002950395.1",
+    "organism_name": "Shigella sonnei",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "shigella sp.",
+    "accession": "GCA_003523345.1",
+    "organism_name": "Shigella sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "sphingobium indicum",
+    "accession": "GCF_000091125.1",
+    "organism_name": "Sphingobium indicum UT26S",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "sphingomonas sp.",
+    "accession": "GCA_965227385.1",
+    "organism_name": "Sphingomonas sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "staphylococcus arlettae",
+    "accession": "GCF_025560845.1",
+    "organism_name": "Staphylococcus arlettae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus aureus",
+    "accession": "GCF_000013425.1",
+    "organism_name": "Staphylococcus aureus subsp. aureus NCTC 8325",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus cohnii",
+    "accession": "GCF_900458255.1",
+    "organism_name": "Staphylococcus cohnii",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus epidermidis",
+    "accession": "GCF_006094375.1",
+    "organism_name": "Staphylococcus epidermidis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus gallinarum",
+    "accession": "GCF_029774255.1",
+    "organism_name": "Staphylococcus gallinarum",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus haemolyticus",
+    "accession": "GCF_006094395.1",
+    "organism_name": "Staphylococcus haemolyticus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus nepalensis",
+    "accession": "GCF_002442935.1",
+    "organism_name": "Staphylococcus nepalensis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus saprophyticus",
+    "accession": "GCF_000010125.1",
+    "organism_name": "Staphylococcus saprophyticus subsp. saprophyticus ATCC 15305 = NCTC 7292",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus warneri",
+    "accession": "GCF_003571725.1",
+    "organism_name": "Staphylococcus warneri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "staphylococcus xylosus",
+    "accession": "GCF_900458755.1",
+    "organism_name": "Staphylococcus xylosus",
+    "assembly_level": "Contig",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "stenotrophomonas maltophilia",
+    "accession": "GCF_020641395.2",
+    "organism_name": "Stenotrophomonas maltophilia",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "stenotrophomonas sp.",
+    "accession": "GCA_057176265.1",
+    "organism_name": "Stenotrophomonas sp.",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "streptococcus agalactiae",
+    "accession": "GCF_949788565.1",
+    "organism_name": "Streptococcus agalactiae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus australis",
+    "accession": "GCF_900476055.1",
+    "organism_name": "Streptococcus australis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus mutans",
+    "accession": "GCF_019048645.1",
+    "organism_name": "Streptococcus mutans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus oralis",
+    "accession": "GCF_900637025.1",
+    "organism_name": "Streptococcus oralis ATCC 35037",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus pneumoniae",
+    "accession": "GCF_001457635.1",
+    "organism_name": "Streptococcus pneumoniae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus pyogenes",
+    "accession": "GCF_900475035.1",
+    "organism_name": "Streptococcus pyogenes",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus suis",
+    "accession": "GCF_000026745.1",
+    "organism_name": "Streptococcus suis BM407",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptococcus uberis",
+    "accession": "GCF_900475595.1",
+    "organism_name": "Streptococcus uberis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces albus",
+    "accession": "GCF_024752535.1",
+    "organism_name": "Streptomyces albus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces ambofaciens",
+    "accession": "GCF_001267885.1",
+    "organism_name": "Streptomyces ambofaciens ATCC 23877",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces antibioticus",
+    "accession": "GCF_043202155.1",
+    "organism_name": "Streptomyces antibioticus",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces coelicolor",
+    "accession": "GCA_031192905.1",
+    "organism_name": "Streptomyces coelicolor",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "streptomyces fradiae",
+    "accession": "GCF_008704425.1",
+    "organism_name": "Streptomyces fradiae ATCC 10745 = DSM 40063",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces hygroscopicus",
+    "accession": "GCF_037126205.1",
+    "organism_name": "Streptomyces hygroscopicus subsp. hygroscopicus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces lavendulae",
+    "accession": "GCF_002803845.1",
+    "organism_name": "Streptomyces lavendulae subsp. lavendulae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces lividans",
+    "accession": "GCA_022179705.1",
+    "organism_name": "Streptomyces lividans",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "streptomyces niveus",
+    "accession": "GCF_036227585.1",
+    "organism_name": "Streptomyces niveus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces rimosus",
+    "accession": "GCF_000331185.2",
+    "organism_name": "Streptomyces rimosus subsp. rimosus ATCC 10970",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces sp.",
+    "accession": "GCA_019510245.1",
+    "organism_name": "Streptomyces sp.",
+    "assembly_level": "Scaffold",
+    "refseq_category": null
+  },
+  {
+    "species": "streptomyces venezuelae",
+    "accession": "GCF_008639165.1",
+    "organism_name": "Streptomyces venezuelae ATCC 10712",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "streptomyces vinaceus",
+    "accession": "GCF_008704935.1",
+    "organism_name": "Streptomyces vinaceus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "trueperella pyogenes",
+    "accession": "GCF_001281085.1",
+    "organism_name": "Trueperella pyogenes",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "uncultured bacterium",
+    "accession": "GCA_942493055.1",
+    "organism_name": "uncultured bacterium",
+    "assembly_level": "Complete Genome",
+    "refseq_category": null
+  },
+  {
+    "species": "vibrio alginolyticus",
+    "accession": "GCF_023650915.1",
+    "organism_name": "Vibrio alginolyticus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio anguillarum",
+    "accession": "GCF_003390515.1",
+    "organism_name": "Vibrio anguillarum",
+    "assembly_level": "Chromosome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio cholerae",
+    "accession": "GCF_008369605.1",
+    "organism_name": "Vibrio cholerae",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio diabolicus",
+    "accession": "GCF_011801455.1",
+    "organism_name": "Vibrio diabolicus",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio fluvialis",
+    "accession": "GCF_001558415.2",
+    "organism_name": "Vibrio fluvialis",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio harveyi",
+    "accession": "GCF_030060435.1",
+    "organism_name": "Vibrio harveyi",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "vibrio parahaemolyticus",
+    "accession": "GCF_000196095.1",
+    "organism_name": "Vibrio parahaemolyticus RIMD 2210633",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "yersinia enterocolitica",
+    "accession": "GCF_000253175.1",
+    "organism_name": "Yersinia enterocolitica subsp. palearctica Y11",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "yersinia ruckeri",
+    "accession": "GCF_017498685.1",
+    "organism_name": "Yersinia ruckeri",
+    "assembly_level": "Complete Genome",
+    "refseq_category": "reference genome"
+  },
+  {
+    "species": "yokenella regensburgei",
+    "accession": "GCF_003634235.1",
+    "organism_name": "Yokenella regensburgei",
+    "assembly_level": "Scaffold",
+    "refseq_category": "reference genome"
+  }
+]

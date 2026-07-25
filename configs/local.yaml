@@ -3,6 +3,9 @@ paths:
   card_json: "data/raw/card.json"
   aro_index: "data/raw/aro_index.tsv"
   output_dir: "outputs/local/"
+  refseq_manifest: "data/manifests/refseq_species_accessions.json"
+  refseq_genomes_dir: "data/raw/refseq_genomes/"
+  refseq_blast_db: "data/processed/refseq_blastdb/refseq_blastdb"
 
 model:
   esm2_variant: "facebook/esm2_t6_8M_UR50D"
