@@ -58,7 +58,7 @@ class TestLoadConfig:
     def test_hyperparameters_are_v1_defaults(self):
         for config_path in (_INTERNAL_CONFIG, _EXTERNAL_CONFIG):
             config = load_config(config_path)
-            assert config["training"]["batch_size"] == 32
+            assert config["training"]["batch_size"] == 24
             assert config["training"]["learning_rate"] == pytest.approx(1e-4)
             assert config["training"]["epochs"] == 50
             assert config["training"]["optimizer"] == "adam"
