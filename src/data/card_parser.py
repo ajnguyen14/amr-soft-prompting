@@ -72,8 +72,14 @@ def _parse_fasta_header(description: str) -> dict[str, str]:
     }
 
 
-def _parse_aro_index(tsv_path: str | Path) -> dict[str, dict[str, str]]:
+def parse_aro_index(tsv_path: str | Path) -> dict[str, dict[str, str]]:
     """Load aro_index.tsv into a dict keyed by ARO accession string.
+
+    Public (not underscore-prefixed) because src/data/card_tadb_matcher.py
+    also needs raw row access (specifically the 'DNA Accession' column) for
+    the V2 TA-proximity accession prefilter -- CARDRecord doesn't carry that
+    field, so re-reading aro_index.tsv via this shared helper avoids
+    duplicating the TSV-parsing logic.
 
     Args:
         tsv_path: Path to aro_index.tsv.
@@ -113,7 +119,7 @@ def load_card_dataset(
     Returns:
         List of CARDRecord, one per FASTA sequence with metadata joined in.
     """
-    aro_index = _parse_aro_index(aro_index_path)
+    aro_index = parse_aro_index(aro_index_path)
 
     records: list[CARDRecord] = []
     skipped = 0
