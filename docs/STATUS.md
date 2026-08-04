@@ -1,109 +1,149 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-07-20_
+_Last updated: 2026-08-04 15:33_
 
 ## Current Version
 
-**V1 — Core Pipeline**, code complete, retrained, and evaluated. Both
-ablation checkpoints are now trained against the fixed (non-leaky)
-classifier and have holdout numbers to show for it.
+**V2 — Single-Head Retargeting + TA-Proximity Conditioning.** CLAUDE.md's
+roadmap and pipeline spec are fully up to date for this version, but the two
+pieces of actual V2 code are at very different stages:
+
+- **Single-head restructuring (3 separate runs, see CLAUDE.md's task table):
+  not started in code.** `src/models/classifier.py` and
+  `src/models/soft_prompt.py` still implement V1's fixed architecture
+  (single `amr_gene_family` head; `resistance_mechanism` + `drug_class` as
+  soft-prompt conditioning) — not the V2 matrix of three independent
+  conditioning/target pairs. None of the six task-specific configs
+  (`gpu_task{1,2,3}_..._{internal,external}.yaml`) exist yet; only the V1
+  legacy `gpu_server_{internal,external}.yaml` pair is present.
+- **TA-proximity conditioning pipeline (Run 3's input): in progress**, data
+  layer only so far. See below.
 
 ## Completion
 
-**V1 is functionally complete end-to-end**: both ablation configs
-(`configs/gpu_server_internal.yaml`, `configs/gpu_server_external.yaml`) have
-been retrained for the full 50 epochs against the post-label-leakage-fix
-classifier, and both checkpoints have been scored on the CARD test holdout
-via `src.eval.evaluate`. What remains is analysis/write-up (poster) rather
-than pipeline work.
+Rough estimate: **V1 unchanged from last entry (functionally complete)**.
+**V2 TA-proximity data layer ~30%** (TADB parsed, CARD↔TADB accession
+prefilter working) — RefSeq fetch, BLAST coordinate mapping, distance
+binning, and the categorical embedding are all still ahead. **V2 single-head
+restructuring 0%** — not started.
 
 ## What's Working
 
-Everything from the prior entry, plus:
-
-- **GPU server (`sjsu`) CUDA is confirmed working.** The 570/580 driver
-  mismatch that previously blocked training/650M inference on this host is
-  resolved — `nvidia-smi` reports driver 580.159.03 and
-  `torch.cuda.is_available()` returns True. Both retraining runs below and
-  today's evaluation ran on this host without issue.
-- **Both ablations retrained against the fixed `ClassifierHead`.** Full 50
-  epochs each, `batch_size: 24` in both configs (see note under Open
-  Questions), logged to wandb as `lunar-eon-7` (internal, run `i7o4eg5n`) and
-  `fine-flower-8` (external, run `2rr2h1f9`). Best-val checkpoints saved at
-  epoch 47 (internal) and epoch 36 (external).
-- **Holdout evaluation run for both**, via
-  `python -m src.eval.evaluate --config configs/gpu_server_{internal,external}.yaml`:
-
-  | Injection mode | Checkpoint epoch | Test accuracy | Test macro-F1 |
-  |---|---|---|---|
-  | Internal | 47 | 0.8693 | 0.5565 |
-  | External | 36 | 0.8627 | 0.5244 |
-
-  Internal leads on both metrics, with a larger gap on macro-F1 (+0.032)
-  than accuracy (+0.007) — suggestive of a rare-class advantage, not yet
-  investigated further. Full artifacts (confusion matrix CSV,
-  top-10 confused pairs, raw JSON) in
-  `outputs/internal/eval/best_model_2026-07-20T10-37-00.../` and
-  `outputs/external/eval/best_model_2026-07-20T10-37-42.../`.
-- Everything structural from before still holds (`card_parser.py`,
-  `dataset.py`, `esm2_wrapper.py`, `soft_prompt.py`, `preprocess_card.py`,
-  `run_training.py`, `load_config`, all five configs, the label-leakage fix
-  itself).
+- Everything from V1 (unchanged): `card_parser.py`, `dataset.py`,
+  `esm2_wrapper.py`, `soft_prompt.py`, `classifier.py`, `preprocess_card.py`,
+  `run_training.py`, `load_config`, the label-leakage fix, both retrained V1
+  ablation checkpoints (`i7o4eg5n` internal / `2rr2h1f9` external, 0.9087 /
+  0.9054 val gene-family accuracy).
+- **`src/data/tadb_parser.py` (this session).** Parses all four
+  `type_II_{T,AT}_{exp,pre}.fas` files into `TADBLocus` records. Handles two
+  data gotchas found while building it: minus-strand headers list
+  coordinates largest-first (normalized to `start <= end` with strand
+  tracked separately), and one row in `type_II_AT_pre.fas`
+  (`AT240719`) has a coordinate in scientific notation (`2e+06`) instead of
+  a plain integer. 14/14 tests passing, including against the full real
+  dataset (403 exp toxin + 404 exp antitoxin + 169,035 pre toxin + 169,035
+  pre antitoxin = 338,877 headers parsed with zero unhandled malformed
+  rows).
+- **`src/data/card_tadb_matcher.py` (this session, committed as `7015234`).**
+  Version-strips CARD's `aro_index.tsv` `DNA Accession` field
+  (`AL123456.3` → `AL123456`) and joins against TADB's already-unversioned
+  replicon accessions — this is the CLAUDE.md TA-Proximity Pipeline Step 1
+  prefilter that scopes the (not-yet-built) BLAST step to a bounded replicon
+  set instead of a broad RefSeq subset. **Measured coverage: 145/6052
+  (~2.4%) of CARD ARO accessions have a DNA Accession matching a TADB
+  replicon.** Confirmed empirically that CARD's own `fmin`/`fmax` fields
+  (in `card.json`) cannot substitute for BLAST — they're relative to CARD's
+  own excised gene fragment (`fmax - fmin == len(sequence)` for all 6404
+  numeric-coordinate entries, zero exceptions), not real replicon-level
+  coordinates, so BLAST is still required to place matched genes within
+  their replicon. `parse_aro_index` was promoted from private to public in
+  `card_parser.py` (rename only, no behavior change) so the matcher could
+  reuse it instead of re-parsing the TSV. 12/12 new tests passing, including
+  against the real dataset.
+- Both TADB files and all CARD raw files are present on this server
+  (`spark-833c`) at `data/raw/` (gitignored, as required).
+- Full smoke suite: 152/152 passing outside `test_evaluate.py`. Two
+  `test_train.py` failures seen in one combined run turned out to be GPU
+  memory contention (see Blockers), not a real regression — they pass
+  cleanly in isolation.
 
 ## What's In Progress
 
-- Nothing actively running. Next action is deciding what, if anything, to
-  dig into on the macro-F1 gap (e.g. per-class confusion breakdown) before
-  treating the internal-vs-external comparison as final for the poster.
+- Nothing actively running. Both the TADB parser and the CARD/TADB
+  accession matcher are committed (`75af37d`, `7015234`); next actionable
+  step is the RefSeq fetch + BLAST coordinate mapping below.
 
 ## What's Not Started
 
-1. **Poster write-up** — no longer blocked on retraining; the table above is
-   the first trustworthy internal-vs-external comparison since the
-   label-leakage fix.
-2. **`src/data/prodigal_runner.py`** — still an empty stub, deferred to V2
-   (Aidan, 2026-07-09). Not needed for V1 since training/eval only consume
-   CARD's pre-translated amino acid FASTA.
-3. Reflecting the V2 scope change (TA loci pulled forward from V3, see below)
-   in CLAUDE.md's Versioned Roadmap section — still pending, Aidan's to do.
+1. **RefSeq fetch + BLAST coordinate mapping** (CLAUDE.md TA-Proximity
+   Pipeline Step 1, second half) — pull the 145 matched replicons from
+   RefSeq, pinned to CARD's own recorded version (not the current live
+   version, to avoid coordinate drift from reannotation — confirmed
+   approach with Aidan), then BLAST each matched CARD protein against its
+   replicon for real start/end coordinates. No RefSeq data or fetch code
+   exists yet.
+2. **Same-replicon bp distance computation** (Pipeline Step 3) and the
+   **categorical distance-bin embedding** (Pipeline Step 4, `ta_proximity.py`
+   — bin edges deliberately deferred until the real distance histogram is
+   available, per CLAUDE.md).
+3. **V2 single-head restructuring** — three separate training runs (drug
+   class / mechanism / gene-family targets per CLAUDE.md's task table),
+   independently ablated on injection mode = 6 total runs. Needs new
+   `ClassifierHead`/`SoftPromptModule` wiring per task, six new configs, and
+   updated loss functions (`BCEWithLogitsLoss` for Run 1's multi-label drug
+   class target). Not started in code — currently blocked behind the
+   TA-proximity data layer above, since Run 3 needs it as conditioning
+   input.
+4. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged
+   from last entry).
 
 ## Open Questions / Blockers
 
-- **Stale hardcoded test:** `tests/test_config.py::TestLoadConfig::test_hyperparameters_are_v1_defaults`
-  asserts `training.batch_size == 32` for both GPU configs, but both were
-  intentionally changed to `batch_size: 24` on 2026-07-17 (uncommitted as of
-  this session — `git status` still shows both configs modified). The
-  change is a hardware fix, not a hyperparameter tweak: training moved to
-  `sjsu` (RTX 3090), and the 3090s have a lower memory ceiling than
-  originally assumed — batch 24 is the confirmed practical max there, vs.
-  batch 32 on `spark-833c` (DGX Spark). This is the one failure in an
-  otherwise 132/132-passing smoke suite. Since the config edit was applied
-  identically to both ablation configs, the A/B comparison itself isn't
-  desynced — just this one test's hardcoded expectation. Needs either the
-  test updated to 24 or the configs reverted, and the config changes
-  committed either way.
-- **Is the macro-F1 gap (internal vs. external) a real effect or noise?**
-  Both trained under identical hyperparameters except `injection_mode`, so
-  it's a clean A/B, but only a single seed/run per arm — no variance
-  estimate yet. Worth a second seed before leaning on this for the poster's
-  headline claim, time permitting.
-- **V2 scope update (2026-07-17, Aidan's decision, not yet in CLAUDE.md):**
-  TA loci (TADB 3.0) pulled forward from V3 into V2, alongside RefSeq — V2
-  will map CARD metadata + TA loci onto RefSeq.
+- **Push access from this server was intermittently broken, now looks
+  resolved.** Earlier in this session, `git push origin v2-ta-proximity`
+  failed with `git@github.com: Permission denied (publickey)` — this server
+  (`spark-833c`) has an SSH keypair at `~/.ssh/id_ed25519` that didn't
+  appear authorized on GitHub. `origin/v2-ta-proximity` was later found
+  in sync with `75af37d` without a push being run again in this session, so
+  whatever was blocking it seems to have been fixed out-of-band. Not
+  re-verified since — the latest commit (`7015234`, the accession matcher)
+  is queued locally, not yet pushed. **Context:** this branch's earlier work
+  (BLAST runner, TADB parser, TA-proximity module, and their preprocess
+  scripts) was lost when a different, currently-unreachable server went
+  down without that work ever being pushed — everything on this branch as
+  of this session is being rebuilt from scratch specifically to avoid
+  repeating that. Keep commits small and push often until that's confirmed
+  reliable again.
+- **GPU memory contention on `spark-833c` is worse than CLAUDE.md's existing
+  note suggests.** `nvidia-smi` shows three unrelated `ollama` processes
+  holding ~32GB combined. This caused a CUDA OOM in `test_evaluate.py` and,
+  in one combined full-suite run, two `test_train.py` failures that could
+  not be reproduced running that file alone. Not a code regression, but
+  worth being aware any GPU-touching test/run on this host right now is
+  competing with those processes.
+- **Version-pinning decision recorded:** when the RefSeq fetch step is
+  built, pin to CARD's exact recorded DNA Accession version rather than
+  fetching the current live version, to keep BLAST coordinates
+  self-consistent with the sequence CARD's protein was actually drawn from.
+  Confirmed with Aidan this session, not yet implemented.
 - `docs/reviews/2026-07-05-classifier-loss-review.md` — remaining deferred
   items are low-severity doc/style nitpicks; unchanged.
 
 ## Recent Changes
 
-1. **GPU driver blocker on `sjsu` resolved** — CUDA confirmed working
-   (verified 2026-07-20), unblocking the retraining below.
-2. **Both ablation configs retrained end-to-end** (50 epochs each) against
-   the fixed, non-leaky `ClassifierHead` — the first checkpoints trained
-   entirely post-fix.
-3. **Holdout evaluation run for both ablations** via `src.eval.evaluate`:
-   internal 0.8693 accuracy / 0.5565 macro-F1 (epoch 47) vs. external 0.8627
-   accuracy / 0.5244 macro-F1 (epoch 36). This is the first trustworthy
-   internal-vs-external number since the label-leakage fix.
-4. Flagged a stale hardcoded test (`test_config.py` still expects
-   `batch_size: 32`) that now fails against the intentionally-changed
-   `batch_size: 24` configs — changed because `sjsu`'s RTX 3090s cap out at
-   batch 24, lower than the batch 32 originally assumed from `spark-833c`.
+1. **Rebuilt `src/data/tadb_parser.py` from scratch** on this server after
+   the original (unpushed) implementation was lost with the server it was
+   written on. Committed as `75af37d`.
+2. **Built `src/data/card_tadb_matcher.py`**, the CARD↔TADB accession
+   prefilter — first concrete coverage number for the TA-proximity pipeline
+   (145/6052 CARD entries, ~2.4%). Committed as `7015234`.
+3. **Confirmed CARD's `fmin`/`fmax` can't replace BLAST** for genomic
+   coordinates — they're fragment-relative, not replicon-relative, checked
+   against all 6404 numeric-coordinate `card.json` entries with zero
+   exceptions.
+4. **Promoted `card_parser._parse_aro_index` to public `parse_aro_index`**
+   (rename only) so the new matcher could reuse CARD's existing TSV-parsing
+   logic instead of duplicating it.
+5. Checked out `v2-ta-proximity` on this server (`spark-833c`) to resume V2
+   work; confirmed via `git log`/`git diff` that the branch's only prior
+   remote commit was the unrelated batch-size fix (`9bd27eb`) — none of the
+   lost BLAST/TADB/TA-proximity work had ever reached origin.
