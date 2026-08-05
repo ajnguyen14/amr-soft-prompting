@@ -1,5 +1,5 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-08-04 23:10_
+_Last updated: 2026-08-05 02:40_
 
 ## Current Version
 
@@ -21,10 +21,22 @@ pieces of actual V2 code are at very different stages:
 ## Completion
 
 Rough estimate: **V1 unchanged from last entry (functionally complete)**.
-**V2 TA-proximity data layer ~45%** (TADB parsed; all 738 representative
-RefSeq accessions fetched to disk) — BLAST coordinate mapping, distance
-binning, and the categorical embedding are all still ahead. **V2 single-head
-restructuring 0%** — not started.
+**V2 TA-proximity data layer, Steps 1-3 code-complete and run end-to-end on
+real data (~70%)** — Step 4 (categorical embedding) is blocked, not on
+implementation effort but on a real finding: the pipeline currently
+produces almost no usable signal (see "TA-proximity Steps 1-3 run on real
+data" below and Blockers). **V2 single-head restructuring 0%** — not
+started.
+
+**Headline finding this session: Run 3's TA-proximity conditioning input,
+as currently scoped, is very likely not viable.** Only 19 of 6404 CARD ARO
+accessions (0.3%) resolve to a real same-replicon distance value. This
+traces back to a hard ceiling established earlier this session
+(card_tadb_matcher.py: only 28 of CARD's ~5,973 distinct replicons even
+exist in TADB's replicon set at all, regardless of fetch/BLAST strategy) —
+it is a real property of how little CARD's and TADB Type II's replicon
+coverage overlap, not a bug. **Flag for Andreopoulos before Step 4 work
+continues** — see Blockers for options.
 
 **Scope change this session (confirmed with Aidan):** the CARD↔TADB
 accession-matcher prefilter (145/6052 ARO accessions, 28 replicons) is no
@@ -116,34 +128,118 @@ thing that decides what to fetch in Step 1.
   (mocked `Entrez.efetch`, no real network calls in the test suite).
   Config: `configs/ta_proximity_refseq.yaml` (new file, not a training
   config so doesn't touch the internal/external parity rule).
+- **BLAST+ 2.17.0 installed on `spark-833c` (this session), no root
+  required.** Not on PATH, not in the conda env, and `sudo apt install` was
+  unavailable (no passwordless sudo). Installed via NCBI's precompiled
+  tarball directly to `~/tools/ncbi-blast-2.17.0+/bin` instead of
+  `conda install` (CLAUDE.md: pip only for new packages — moot anyway since
+  BLAST+ isn't a Python package). **Architecture trap worth flagging for
+  other sessions:** `spark-833c` is aarch64 (DGX Spark's Grace CPU, not the
+  x86_64 typical of most servers) — the standard `x64-linux` BLAST+ tarball
+  silently fails with `Exec format error` here; the `aarch64-linux` tarball
+  is required. The RTX 3090 boxes are presumably x86_64 and would need the
+  standard tarball instead.
+- **`src/data/blast_runner.py` (this session).** Wraps `makeblastdb`/
+  `tblastn` via subprocess (no first-class Python BLAST-running binding
+  exists; `Bio.Blast` only parses output). Batches all queries for one
+  representative accession into a single `tblastn` call (738 calls, not
+  6404). Normalizes `tblastn`'s `sstart`/`send` to `start <= end` with
+  strand tracked separately, matching `TADBLocus`'s convention. 8/8 tests
+  passing against real (not mocked) BLAST+ binaries, using a real CARD gene
+  (CblA-1) embedded in a synthetic genome with known coordinates — this
+  also confirmed a real BLAST behavior worth having verified rather than
+  assumed: a protein query has no stop-codon symbol, so the aligned subject
+  range ends 3bp short of the full CDS.
+- **`scripts/run_blast_coordinate_mapping.py` — full BLAST run, real data.**
+  Groups CARD's 6052 protein sequences (from the training FASTA; 352 of the
+  6404 taxonomy-resolved ARO accessions aren't in it and are skipped) by
+  representative accession and BLASTs each group against its fetched
+  genome. **Result: 1952/6052 (32.3%) BLAST-mapped.** Confirms and
+  quantifies the accession-substitution risk flagged when
+  `refseq_representative.py` was built: most of the 83% substituted
+  entries simply have no homologous hit in their substituted genome at all
+  (an AMR gene present in one strain is frequently just absent from a
+  different strain's genome, not merely at a different coordinate).
+- **`src/data/ta_proximity.py` (this session).** Step 3: classifies every
+  ARO accession into `distance` (real same-replicon bp value to the
+  nearest TADB locus), `no_ta_locus` (BLAST-mapped fine, no TA locus on
+  that replicon), or `unknown` (BLAST failed). Version-strips BLAST hit
+  replicons before comparing against TADB's unversioned ones; never
+  compares across different replicons even from the same organism, per
+  CLAUDE.md. Does **not** build Step 4's embedding vocabulary — bin edges
+  are still explicitly deferred pending a usable histogram (see below, this
+  is now the actual blocker, not just a sequencing choice). 9/9 tests
+  passing. `scripts/run_ta_proximity.py` ran it against the real BLAST hits
+  and full TADB loci set:
+
+  ```
+  6404 ARO accessions total
+    19   distance    (0.3%)
+  1933   no_ta_locus (30.2%)
+  4452   unknown     (69.5%)
+  ```
+
+  **This is very likely not enough signal for a learned embedding** — see
+  Blockers for the ceiling analysis and options.
+- **Cross-checked against a second, much rosier run from a different
+  server** (user-reported: 2397/6052 `distance`, 39.6%) and concluded it's
+  very likely invalid, not a better result to reconcile toward. Reasoning:
+  `card_tadb_matcher.py` already established, independent of any BLAST or
+  dedup strategy, that only 28 of CARD's ~5,973 distinct replicons exist in
+  TADB's replicon set *at all* — a hard ceiling of ~145 ARO accessions on
+  how many could ever land near a TA locus under a correct same-replicon
+  comparison. 2397 is 16x above that ceiling, which is very hard to explain
+  except by a same-replicon check not actually being enforced (e.g.
+  matching by organism/species instead of exact replicon accession —
+  exactly the failure mode CLAUDE.md's pipeline spec explicitly warns
+  against). **Not yet confirmed against that session's actual code** — the
+  other session's owner couldn't check at the time this was raised.
+- **Investigated whether expanding TADB scope beyond Type II could raise
+  the ceiling (in progress, not yet acted on).** TADB 3.0 has Types I, III–
+  VIII in addition to Type II, all downloadable in the same FASTA format
+  (checked live against the TADB 3.0 download page + counted real records
+  via curl, not from page text, since the site itself doesn't publish
+  counts). Real per-file record counts on this session:
+
+  | Type | exp (T+AT) | pre (T+AT) |
+  |---|---|---|
+  | I   | 200 | 54,677 |
+  | III | 16  | 257 |
+  | IV  | 27  | 33,370 |
+  | V   | 2   | 5,572 |
+  | VI  | 2   | 4 |
+  | VII | 6   | 776 |
+  | VIII| 8   | 13,956 |
+
+  Combined, these would add ~108,900 loci on top of Type II's existing
+  338,877 (a ~32% increase in raw loci) — Type I and Type IV are the
+  largest additions. Whether this would meaningfully raise the 28-replicon
+  overlap ceiling with CARD's specific replicon set is **not yet checked**
+  — that requires actually running the accession-intersection logic against
+  the new replicons, not just counting records. Header format for the new
+  types (esp. Type I/VIII's RNA-based antitoxin entries) also not yet
+  confirmed compatible with `tadb_parser.py`'s existing regex.
 - Both TADB files and all CARD raw files are present on this server
   (`spark-833c`) at `data/raw/` (gitignored, as required).
-- Full smoke suite: 152/152 passing outside `test_evaluate.py`. Two
-  `test_train.py` failures seen in one combined run turned out to be GPU
-  memory contention (see Blockers), not a real regression — they pass
-  cleanly in isolation.
+- Full smoke suite: 187/187 passing outside `test_evaluate.py`/
+  `test_train.py`. Earlier `test_train.py` failures traced to GPU memory
+  contention (see Blockers), not a real regression.
 
 ## What's In Progress
 
-- Nothing actively running. RefSeq fetch is complete (738/738 accessions on
-  disk). Next actionable step is BLAST coordinate mapping below — no BLAST
-  code exists yet.
+- Nothing actively running. Steps 1-3 of the TA-proximity pipeline are
+  code-complete and have been run on the full real dataset. Next decision
+  point is whether/how to expand TADB scope (Type I/III-VIII) or otherwise
+  address the sparse-signal finding — not yet resolved, see Blockers.
 
 ## What's Not Started
 
-1. **BLAST coordinate mapping** (CLAUDE.md TA-Proximity Pipeline Step 1,
-   second half) — BLAST each of the 6404 resolvable CARD proteins against
-   its organism group's representative accession (now fetched, see What's
-   Working) for real start/end coordinates. No BLAST code exists yet;
-   likely needs `makeblastdb`/`tblastn` (protein query vs. translated
-   nucleotide db, since the fetched RefSeq records are nucleotide FASTA)
-   available on whichever server this runs on — not yet confirmed installed
-   anywhere.
-2. **Same-replicon bp distance computation** (Pipeline Step 3) and the
-   **categorical distance-bin embedding** (Pipeline Step 4, `ta_proximity.py`
-   — bin edges deliberately deferred until the real distance histogram is
-   available, per CLAUDE.md).
-3. **V2 single-head restructuring** — three separate training runs (drug
+1. **Step 4: categorical distance-bin embedding** — blocked, not merely
+   sequenced after Steps 1-3. With only 19 real `distance` values, bin
+   edges "set from the actual histogram" (per CLAUDE.md) would be
+   statistically meaningless. Needs a scoping decision first (see
+   Blockers) before this is worth building.
+2. **V2 single-head restructuring** — three separate training runs (drug
    class / mechanism / gene-family targets per CLAUDE.md's task table),
    independently ablated on injection mode = 6 total runs. Needs new
    `ClassifierHead`/`SoftPromptModule` wiring per task, six new configs, and
@@ -151,11 +247,36 @@ thing that decides what to fetch in Step 1.
    class target). Not started in code — currently blocked behind the
    TA-proximity data layer above, since Run 3 needs it as conditioning
    input.
-4. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged
+3. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged
    from last entry).
 
 ## Open Questions / Blockers
 
+- **TOP BLOCKER: Run 3's TA-proximity signal is very likely too sparse to
+  use, as currently scoped.** Only 19/6404 (0.3%) ARO accessions get a real
+  distance value; the rest are `no_ta_locus` (30.2%) or `unknown` (69.5%).
+  This traces to a hard, fetch/BLAST-strategy-independent ceiling: only 28
+  of CARD's ~5,973 distinct replicons exist in TADB Type II's replicon set
+  at all (card_tadb_matcher.py, established earlier this session), capping
+  real matches at ~145 ARO accessions even in the best case. **Not a bug —
+  a property of how little the two databases' replicon coverage overlaps.**
+  A second run from a different server reported a much higher number
+  (2397/6052, 39.6%) but is very likely invalid: it's 16x above the
+  ceiling above, most plausibly because same-replicon-accession equality
+  isn't actually being enforced there (CLAUDE.md explicitly warns against
+  exactly this — comparing across replicons even from the same organism).
+  Not yet confirmed against that session's code. **Options, not yet decided
+  with Andreopoulos:**
+  1. Collapse the conditioning input to a coarse 3-way categorical
+     (`unknown`/`no_ta_locus`/`near_ta_locus`) instead of distance bins —
+     usable even with ~145 positive examples, much less informative than
+     originally intended.
+  2. Expand TADB scope beyond Type II (Types I/III-VIII, ~108,900
+     additional loci available — see What's Working) to raise the ceiling.
+     Not yet checked whether this actually helps (needs the real
+     accession-intersection re-run, not just more raw loci).
+  3. Reconsider whether TA-proximity is viable as Run 3's conditioning
+     input at all, given this ceiling.
 - **Push access from this server was intermittently broken, now looks
   resolved.** Earlier in this session, `git push origin v2-ta-proximity`
   failed with `git@github.com: Permission denied (publickey)` — this server
@@ -178,11 +299,10 @@ thing that decides what to fetch in Step 1.
   not be reproduced running that file alone. Not a code regression, but
   worth being aware any GPU-touching test/run on this host right now is
   competing with those processes.
-- **Version-pinning decision recorded:** when the RefSeq fetch step is
-  built, pin to CARD's exact recorded DNA Accession version rather than
-  fetching the current live version, to keep BLAST coordinates
-  self-consistent with the sequence CARD's protein was actually drawn from.
-  Confirmed with Aidan this session, not yet implemented.
+- **Version-pinning decision: implemented.** `refseq_fetch.py` fetches
+  CARD's exact recorded accession version (not the current live version),
+  keeping BLAST coordinates self-consistent with the sequence CARD's
+  protein was actually drawn from. No longer open.
 - **Organism-dedup substitution rate (83%) not yet reviewed with
   Andreopoulos.** See `refseq_representative.py` entry above under What's
   Working — for the largest, most strain-diverse species in CARD, "most
@@ -239,3 +359,31 @@ thing that decides what to fetch in Step 1.
    accessions now on disk** at `data/raw/refseq/` (625MB, gitignored).
    9/9 new tests passing (mocked `Entrez.efetch`, no real network calls in
    the test suite itself).
+10. **Installed BLAST+ 2.17.0 on `spark-833c`** without root (NCBI's
+    precompiled aarch64 tarball — the standard x64 build fails silently
+    with `Exec format error` on this ARM64 host). Built and tested
+    `src/data/blast_runner.py` (tblastn wrapper, 8/8 tests against real
+    BLAST binaries). Committed as `eaa4469`.
+11. **Built and ran `scripts/run_blast_coordinate_mapping.py` against the
+    real dataset**: 1952/6052 (32.3%) CARD proteins BLAST-mapped onto their
+    organism group's representative genome. Committed as `38c5b5d`.
+12. **Built `src/data/ta_proximity.py` (Step 3) and ran it**: only
+    19/6404 (0.3%) ARO accessions get a real same-replicon TA-locus
+    distance; 1933 (30.2%) `no_ta_locus`; 4452 (69.5%) `unknown`. 9/9 tests
+    passing. Committed as `350ea1e`.
+13. **Investigated a conflicting, much higher result (2397/6052, 39.6%)
+    reported from a different server session.** Concluded it's very likely
+    invalid — 16x above a hard ceiling (~145 ARO accessions) established
+    earlier this session via `card_tadb_matcher.py`, independent of fetch
+    or BLAST strategy. Most plausible cause: the other pipeline isn't
+    enforcing same-replicon-accession equality before computing a distance.
+    Not yet confirmed against that session's actual code.
+14. **Checked TADB 3.0's download page for data beyond Type II.** Types
+    I/III-VIII exist (~108,900 additional loci beyond Type II's 338,877,
+    counted directly via curl, not page text). Not yet determined whether
+    this would raise the 28-replicon ceiling — flagged as one of three
+    options for resolving the sparse-signal blocker, pending a decision
+    with Andreopoulos rather than unilaterally expanded.
+15. **Updated this file with the full session's findings** — the
+    sparse-signal blocker is now the top item under Open
+    Questions/Blockers, not buried under routine progress notes.
