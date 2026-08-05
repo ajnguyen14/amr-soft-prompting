@@ -1,7 +1,11 @@
 paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
   card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
   aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
   refseq_output_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/refseq/"
+  blastdb_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/blastdb/"
+  blast_hits_output: "/data/aidannguyen/amr-soft-prompting/data/processed/blast_hits.json"
+  ta_proximity_output: "/data/aidannguyen/amr-soft-prompting/data/processed/ta_proximity_results.json"
 
 refseq:
   entrez_email: "aidan.j.nguyen@sjsu.edu"
@@ -9,3 +13,14 @@ refseq:
   # rate limit (10 req/sec with a key). Set entrez_api_key to raise this.
   entrez_api_key: null
   requests_per_second: 3.0
+
+blast:
+  # BLAST+ 2.17.0 not on PATH -- installed to this location on spark-833c
+  # (aarch64 build; the standard x64-linux tarball fails with "Exec format
+  # error" on this host's ARM64 Grace CPU). Set explicitly rather than
+  # relying on PATH/.bashrc, which subprocess calls can't assume are sourced.
+  bin_dir: "/home/aidannguyen/tools/ncbi-blast-2.17.0+/bin"
+  # CLAUDE.md TA-Proximity Pipeline Step 1: conservative defaults, not yet
+  # finalized. Record actual coverage achieved at these thresholds.
+  min_identity: 95.0
+  min_query_coverage: 90.0
