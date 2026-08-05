@@ -1,5 +1,5 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-08-04 17:05_
+_Last updated: 2026-08-04 23:10_
 
 ## Current Version
 
@@ -21,10 +21,10 @@ pieces of actual V2 code are at very different stages:
 ## Completion
 
 Rough estimate: **V1 unchanged from last entry (functionally complete)**.
-**V2 TA-proximity data layer ~35%** (TADB parsed; RefSeq fetch scope
-resolved down to a concrete 738-accession list) — the RefSeq fetch itself,
-BLAST coordinate mapping, distance binning, and the categorical embedding
-are all still ahead. **V2 single-head restructuring 0%** — not started.
+**V2 TA-proximity data layer ~45%** (TADB parsed; all 738 representative
+RefSeq accessions fetched to disk) — BLAST coordinate mapping, distance
+binning, and the categorical embedding are all still ahead. **V2 single-head
+restructuring 0%** — not started.
 
 **Scope change this session (confirmed with Aidan):** the CARD↔TADB
 accession-matcher prefilter (145/6052 ARO accessions, 28 replicons) is no
@@ -98,6 +98,24 @@ thing that decides what to fetch in Step 1.
   flaw specific to the most-common rule — but it's a real accuracy tradeoff
   against the fetch-count reduction and should be weighed before treating
   Run 3's TA-proximity signal as final. Not yet raised with Andreopoulos.
+- **`src/data/refseq_fetch.py` + `scripts/fetch_refseq_representatives.py`
+  (this session) — RefSeq fetch actually run.** Fetches nucleotide FASTA
+  per representative accession via `Bio.Entrez` (`Entrez.email =
+  aidan.j.nguyen@sjsu.edu`, no API key on file, so rate-limited client-side
+  to NCBI's unauthenticated 3 req/sec ceiling), pinned to CARD's exact
+  recorded accession version. Fetches are resumable — an existing
+  `<accession>.fasta` on disk is never re-fetched, which matters because
+  version-pinning makes a cached file provably not stale. **Run on
+  `spark-833c` (CPU server offline this session) since this step is
+  non-GPU, network-bound work — fine per the escalation rules either way.**
+  First pass: 735/738 (99.6%) succeeded in ~12 min; 3 large genomes
+  (`AM412317.1`, `CP000494.1`, `CP020412.2`) hit transient
+  `IncompleteRead` truncation. Re-running the same script (resumable by
+  design) fetched the remaining 3 in seconds — **738/738 (100%) now on
+  disk** at `data/raw/refseq/` (625MB, gitignored). 9/9 new tests passing
+  (mocked `Entrez.efetch`, no real network calls in the test suite).
+  Config: `configs/ta_proximity_refseq.yaml` (new file, not a training
+  config so doesn't touch the internal/external parity rule).
 - Both TADB files and all CARD raw files are present on this server
   (`spark-833c`) at `data/raw/` (gitignored, as required).
 - Full smoke suite: 152/152 passing outside `test_evaluate.py`. Two
@@ -107,19 +125,20 @@ thing that decides what to fetch in Step 1.
 
 ## What's In Progress
 
-- Nothing actively running. `refseq_representative.py` (this session) is
-  written and tested but not yet committed. Next actionable step is the
-  RefSeq fetch itself, now that the 738-accession fetch list is resolved.
+- Nothing actively running. RefSeq fetch is complete (738/738 accessions on
+  disk). Next actionable step is BLAST coordinate mapping below — no BLAST
+  code exists yet.
 
 ## What's Not Started
 
-1. **RefSeq fetch + BLAST coordinate mapping** (CLAUDE.md TA-Proximity
-   Pipeline Step 1) — pull the 738 representative accessions from RefSeq,
-   pinned to CARD's own recorded version (not the current live version, to
-   avoid coordinate drift from reannotation — confirmed approach with
-   Aidan), then BLAST each of the 6404 resolvable CARD proteins against its
-   organism group's representative accession for real start/end
-   coordinates. No RefSeq data or fetch code exists yet.
+1. **BLAST coordinate mapping** (CLAUDE.md TA-Proximity Pipeline Step 1,
+   second half) — BLAST each of the 6404 resolvable CARD proteins against
+   its organism group's representative accession (now fetched, see What's
+   Working) for real start/end coordinates. No BLAST code exists yet;
+   likely needs `makeblastdb`/`tblastn` (protein query vs. translated
+   nucleotide db, since the fetched RefSeq records are nucleotide FASTA)
+   available on whichever server this runs on — not yet confirmed installed
+   anywhere.
 2. **Same-replicon bp distance computation** (Pipeline Step 3) and the
    **categorical distance-bin embedding** (Pipeline Step 4, `ta_proximity.py`
    — bin edges deliberately deferred until the real distance histogram is
@@ -203,10 +222,20 @@ thing that decides what to fetch in Step 1.
    distinct DNA accessions down to 740 organism (NCBI taxonomy ID) groups
    and selecting one most-common representative accession per group —
    738 accessions to fetch, deterministic and free of any external RefSeq
-   lookup. 17/17 new tests passing. Not yet committed.
+   lookup. 17/17 new tests passing. Committed as `9b59c49`.
 8. **Measured the accuracy cost of that dedup**: 83% (5316/6404) of CARD
    entries end up BLASTed against a substituted, non-own accession,
    concentrated almost entirely in a handful of large strain-diverse
    species (P. aeruginosa, A. baumannii, K. pneumoniae, E. coli) rather
    than spread evenly — flagged as an open question for Andreopoulos
    rather than silently accepted.
+9. **Built and ran the actual RefSeq fetch** (`src/data/refseq_fetch.py`,
+   `scripts/fetch_refseq_representatives.py`, `configs/ta_proximity_refseq.yaml`)
+   on `spark-833c` (CPU server offline this session). 3 large genomes hit
+   transient `IncompleteRead` truncation on the first pass (735/738); the
+   fetcher's resume-by-default behavior (skip files already on disk, safe
+   because fetches are version-pinned) meant re-running the same command
+   picked up just the 3 stragglers in seconds. **738/738 (100%) representative
+   accessions now on disk** at `data/raw/refseq/` (625MB, gitignored).
+   9/9 new tests passing (mocked `Entrez.efetch`, no real network calls in
+   the test suite itself).

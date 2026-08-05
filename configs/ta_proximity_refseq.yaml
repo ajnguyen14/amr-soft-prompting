@@ -1,0 +1,11 @@
+paths:
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  refseq_output_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/refseq/"
+
+refseq:
+  entrez_email: "aidan.j.nguyen@sjsu.edu"
+  # No NCBI API key on file -- 3 req/sec is NCBI's default unauthenticated
+  # rate limit (10 req/sec with a key). Set entrez_api_key to raise this.
+  entrez_api_key: null
+  requests_per_second: 3.0
