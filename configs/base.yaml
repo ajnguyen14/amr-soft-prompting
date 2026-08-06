@@ -24,6 +24,15 @@ blast:
   min_qcov: 90.0
   max_evalue: 1.0e-10
 
+# Categorical distance bins for TA-locus proximity (V2 TA-proximity pipeline
+# Step 4, src/data/ta_proximity.py). Intentionally left unset: per CLAUDE.md,
+# edges must come from the actual same-replicon distance histogram, not be
+# chosen a priori. Run scripts/preprocess_ta_proximity.py once against real
+# BLAST/TADB data first -- it prints that histogram -- then set this list
+# (ascending bp thresholds, e.g. [1000, 10000, 100000]) and re-run.
+ta_proximity:
+  distance_bin_edges_bp: null
+
 logging:
   wandb_project: "amr-soft-prompting"
   wandb_run_name: null  # auto-generated if null

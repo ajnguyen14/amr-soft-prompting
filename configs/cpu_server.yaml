@@ -6,6 +6,16 @@ paths:
   refseq_manifest: "/data/aidannguyen/amr-soft-prompting/data/manifests/refseq_species_accessions.json"
   refseq_genomes_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/refseq_genomes/"
   refseq_blast_db: "/data/aidannguyen/amr-soft-prompting/data/processed/refseq_blastdb/refseq_blastdb"
+  tadb_toxin_exp: "/data/aidannguyen/amr-soft-prompting/data/raw/type_II_T_exp.fas"
+  tadb_antitoxin_exp: "/data/aidannguyen/amr-soft-prompting/data/raw/type_II_AT_exp.fas"
+  tadb_toxin_pre: "/data/aidannguyen/amr-soft-prompting/data/raw/type_II_T_pre.fas"
+  tadb_antitoxin_pre: "/data/aidannguyen/amr-soft-prompting/data/raw/type_II_AT_pre.fas"
+
+# num_threads is a performance knob only (never affects which hits pass, so
+# it's excluded from preprocess_ta_proximity.py's cache-staleness check) --
+# this host has 48 cores, confirmed idle via `top` before setting this.
+blast:
+  num_threads: 16
 
 model:
   esm2_variant: "facebook/esm2_t30_150M_UR50D"

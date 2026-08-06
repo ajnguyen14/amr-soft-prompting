@@ -6,6 +6,10 @@ paths:
   refseq_manifest: "data/manifests/refseq_species_accessions.json"
   refseq_genomes_dir: "data/raw/refseq_genomes/"
   refseq_blast_db: "data/processed/refseq_blastdb/refseq_blastdb"
+  tadb_toxin_exp: "data/raw/type_II_T_exp.fas"
+  tadb_antitoxin_exp: "data/raw/type_II_AT_exp.fas"
+  tadb_toxin_pre: "data/raw/type_II_T_pre.fas"
+  tadb_antitoxin_pre: "data/raw/type_II_AT_pre.fas"
 
 model:
   esm2_variant: "facebook/esm2_t6_8M_UR50D"
