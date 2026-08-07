@@ -13,6 +13,21 @@ from src.data.card_parser import CARDRecord
 # (reader) so the two never drift on filename or on-disk format.
 SPLIT_ARTIFACT_FILENAME = "card_splits.pkl"
 
+# Single source of truth for how each CARD label field is represented in an
+# AMRDataset-collated batch and which loss type it takes, shared by
+# src/training/train.py, src/eval/evaluate.py, and src/eval/metrics.py's V2
+# (single-head, config['task']-driven) code paths -- see CLAUDE.md's
+# Single-Head Architecture table. 'amr_gene_family' and 'resistance_mechanism'
+# are single-label (CrossEntropyLoss / 'ce'); 'drug_class' is multi-label
+# (BCEWithLogitsLoss / 'bce'), so it can only ever be a prediction target,
+# never a SingleFieldSoftPrompt conditioning input (that requires a single
+# categorical index tensor).
+TARGET_FIELD_SPECS: dict[str, dict[str, str]] = {
+    "drug_class": {"batch_key": "drug_class_labels", "loss_type": "bce"},
+    "resistance_mechanism": {"batch_key": "resistance_mechanism", "loss_type": "ce"},
+    "amr_gene_family": {"batch_key": "amr_gene_family", "loss_type": "ce"},
+}
+
 
 class AMRDataset(Dataset):
     """PyTorch Dataset for AMR gene sequences with CARD metadata labels.

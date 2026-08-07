@@ -1,0 +1,38 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  # Separate output_dir per run so none of the 6 V2 single-head ablations
+  # ever overwrite each other's checkpoint.
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/task2_mechanism_external/"
+
+model:
+  esm2_variant: "facebook/esm2_t33_650M_UR50D"
+  device: "cuda"
+  # Along with output_dir and logging.wandb_run_name, the only fields that
+  # differ from gpu_task2_mechanism_internal.yaml -- same internal/external
+  # parity rule as V1.
+  injection_mode: "external"
+
+training:
+  # Confirmed RTX 3090 ceiling. Bump to 32 if this run is instead launched
+  # on spark-833c (DGX Spark). Must match gpu_task2_mechanism_internal.yaml
+  # exactly (parity rule) unless run on a different server.
+  batch_size: 24
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"
+
+task:
+  # Run 2 (CLAUDE.md's Single-Head Architecture table): condition the soft
+  # prompt on amr_gene_family, predict resistance_mechanism (single-label,
+  # routed to CrossEntropyLoss via TARGET_FIELD_SPECS/SingleTargetLoss).
+  conditioning_field: "amr_gene_family"
+  target_field: "resistance_mechanism"
+
+loss:
+  weight: 1.0
+
+logging:
+  wandb_project: "amr-soft-prompting"
+  wandb_run_name: "v2-task2-mechanism-external"

@@ -15,12 +15,12 @@ import wandb
 from torch.utils.data import DataLoader
 
 from src.data.card_parser import CARDRecord, get_label_vocabularies, load_card_dataset
-from src.data.dataset import AMRDataset, load_split_artifact, split_dataset
-from src.eval.metrics import compute_metrics
-from src.models.classifier import ClassifierHead
+from src.data.dataset import TARGET_FIELD_SPECS, AMRDataset, load_split_artifact, split_dataset
+from src.eval.metrics import compute_metrics, compute_single_target_metrics
+from src.models.classifier import ClassifierHead, SingleTargetClassifierHead
 from src.models.esm2_wrapper import ESM2Wrapper
-from src.models.soft_prompt import SoftPromptModule
-from src.training.loss import AMRLoss
+from src.models.soft_prompt import SingleFieldSoftPrompt, SoftPromptModule
+from src.training.loss import AMRLoss, SingleTargetLoss
 from src.utils.config import load_config
 
 # Project-wide default (CLAUDE.md Reproducibility Requirements).
@@ -154,6 +154,72 @@ def build_models(
     return esm2, soft_prompt, classifier, loss_fn
 
 
+def build_v2_models(
+    config: dict[str, Any],
+    label_vocabularies: dict[str, list[str]],
+    device: str,
+) -> tuple[ESM2Wrapper, SingleFieldSoftPrompt, SingleTargetClassifierHead, SingleTargetLoss]:
+    """Construct the frozen ESM-2 backbone + a task-configurable V2 single-head pipeline.
+
+    Reads config['task']['conditioning_field']/['target_field'] to determine
+    which CARD label field conditions the soft prompt and which one the
+    classifier predicts, per CLAUDE.md's Single-Head Architecture table
+    (Runs 1-3). Unlike build_models (V1, fixed mechanism+drug_class
+    conditioning / amr_gene_family target), the same function here serves
+    any of the three V2 runs.
+
+    Args:
+        config: Merged config dict with 'model', 'task', 'classifier', and
+            'loss' sections.
+        label_vocabularies: Dict from get_label_vocabularies.
+        device: Torch device string.
+
+    Returns:
+        (esm2, soft_prompt, classifier, loss_fn), all moved to `device`.
+
+    Raises:
+        ValueError: If conditioning_field isn't single-label ('ce') --
+            SingleFieldSoftPrompt requires one categorical index per sample,
+            so a multi-label field like drug_class can't condition it.
+    """
+    conditioning_field = config["task"]["conditioning_field"]
+    target_field = config["task"]["target_field"]
+
+    conditioning_spec = TARGET_FIELD_SPECS[conditioning_field]
+    target_spec = TARGET_FIELD_SPECS[target_field]
+
+    if conditioning_spec["loss_type"] != "ce":
+        raise ValueError(
+            f"conditioning_field {conditioning_field!r} is multi-label "
+            "(loss_type='bce') -- SingleFieldSoftPrompt requires a single-label "
+            "categorical field."
+        )
+
+    injection_mode = config["model"]["injection_mode"]
+    esm2 = ESM2Wrapper(config["model"]["esm2_variant"], injection_mode=injection_mode).to(device)
+
+    num_conditioning = len(label_vocabularies[conditioning_field])
+    soft_prompt = SingleFieldSoftPrompt(num_conditioning, esm2.embed_dim).to(device)
+
+    num_targets = len(label_vocabularies[target_field])
+    classifier = SingleTargetClassifierHead(
+        input_dim=esm2.output_dim(SingleFieldSoftPrompt.NUM_PROMPT_TOKENS),
+        hidden_dim=config["classifier"]["hidden_dim"],
+        dropout=config["classifier"]["dropout"],
+        target_name=target_field,
+        num_classes=num_targets,
+    ).to(device)
+
+    loss_fn = SingleTargetLoss(
+        target_name=target_field,
+        batch_key=target_spec["batch_key"],
+        loss_type=target_spec["loss_type"],
+        weight=config["loss"].get("weight", 1.0),
+    ).to(device)
+
+    return esm2, soft_prompt, classifier, loss_fn
+
+
 def build_optimizer(
     name: str,
     params: list[torch.nn.Parameter],
@@ -256,6 +322,80 @@ def run_epoch(
     return {key: value / n_batches for key, value in totals.items()}
 
 
+def run_v2_epoch(
+    loader: DataLoader,
+    esm2: ESM2Wrapper,
+    soft_prompt: SingleFieldSoftPrompt,
+    classifier: SingleTargetClassifierHead,
+    loss_fn: SingleTargetLoss,
+    conditioning_field: str,
+    device: str,
+    optimizer: torch.optim.Optimizer | None = None,
+) -> dict[str, float]:
+    """Run one epoch of a V2 single-head task. Trains if `optimizer` is given, else only evaluates.
+
+    Generalizes run_epoch (V1, fixed mechanism+drug_class -> amr_gene_family
+    wiring) to any single conditioning/target pair, per config['task'] via
+    build_v2_models. ESM-2 stays in eval() mode regardless of train/val, same
+    rationale as run_epoch.
+
+    Args:
+        loader: DataLoader yielding AMRDataset-collated batches.
+        esm2, soft_prompt, classifier, loss_fn: Model components from
+            build_v2_models, already moved to `device`.
+        conditioning_field: Vocab key feeding the soft prompt (e.g.
+            'amr_gene_family'); its AMRDataset batch key is looked up via
+            TARGET_FIELD_SPECS.
+        device: Torch device string.
+        optimizer: If given, this is a training epoch: backward + step per
+            batch. If None, this is an evaluation epoch: no gradient updates.
+
+    Returns:
+        Dict of epoch-averaged values: 'total', the target's loss term (key
+        loss_fn.target_name), plus its metric(s) from
+        compute_single_target_metrics.
+    """
+    is_train = optimizer is not None
+    soft_prompt.train(is_train)
+    classifier.train(is_train)
+    esm2.eval()
+
+    conditioning_batch_key = TARGET_FIELD_SPECS[conditioning_field]["batch_key"]
+    target_name = classifier.target_name
+    batch_key = loss_fn.batch_key
+    loss_type = loss_fn.loss_type
+
+    totals: dict[str, float] = {}
+    n_batches = 0
+
+    with torch.set_grad_enabled(is_train):
+        for batch in loader:
+            batch = move_batch_to_device(batch, device)
+
+            soft_prompt_vectors = soft_prompt(batch[conditioning_batch_key])
+            pooled = esm2(batch["sequence"], soft_prompt_vectors)
+            logits = classifier(pooled)
+            losses = loss_fn(logits, batch)
+
+            if is_train:
+                optimizer.zero_grad()
+                losses["total"].backward()
+                optimizer.step()
+
+            metrics = compute_single_target_metrics(target_name, batch_key, loss_type, logits, batch)
+
+            batch_values = {
+                "total": losses["total"].item(),
+                target_name: losses[target_name].item(),
+                **metrics,
+            }
+            for key, value in batch_values.items():
+                totals[key] = totals.get(key, 0.0) + value
+            n_batches += 1
+
+    return {key: value / n_batches for key, value in totals.items()}
+
+
 def train(config: dict[str, Any]) -> None:
     """Run the full V1 training loop.
 
@@ -337,16 +477,120 @@ def train(config: dict[str, Any]) -> None:
     wandb.finish()
 
 
+def train_v2(config: dict[str, Any]) -> None:
+    """Run a full V2 single-head training loop (Runs 1-3, per config['task']).
+
+    Trains and validates every epoch, logs the target loss plus total loss
+    and its metric(s) to wandb, and checkpoints only on a new best total
+    validation loss -- same structure as train() (V1), but task-configurable
+    via build_v2_models/run_v2_epoch instead of fixed mechanism+drug_class ->
+    amr_gene_family wiring. Kept as a separate function (not a branch inside
+    train()) so V1's reproducible path, and the two already-trained V1
+    checkpoints it produces, are never touched by V2 changes.
+
+    Args:
+        config: Merged config dict from load_config (base.yaml + a
+            gpu_task{1,2,3}_*_{internal,external}.yaml override), with a
+            'task' section ('conditioning_field', 'target_field') in
+            addition to V1's sections.
+    """
+    set_seed(SEED)
+
+    device = config["model"]["device"]
+    conditioning_field = config["task"]["conditioning_field"]
+
+    train_loader, val_loader, _test_loader, label_vocabularies = build_dataloaders(config)
+    esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, device)
+
+    trainable_params = list(soft_prompt.parameters()) + list(classifier.parameters())
+    optimizer = build_optimizer(
+        config["training"]["optimizer"], trainable_params, config["training"]["learning_rate"]
+    )
+
+    # gradient_checkpointing is derived from injection_mode (see esm2_wrapper.py),
+    # not an independent hyperparameter -- logged for run-to-run visibility only,
+    # so it's added to the wandb snapshot without mutating the loaded config.
+    wandb_config = {
+        **config,
+        "model": {
+            **config["model"],
+            "gradient_checkpointing": config["model"]["injection_mode"] == "internal",
+        },
+    }
+    wandb.init(
+        project=config["logging"]["wandb_project"],
+        name=config["logging"]["wandb_run_name"],
+        config=wandb_config,
+    )
+
+    output_dir = Path(config["paths"]["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_path = output_dir / "best_model.pt"
+
+    best_val_loss = float("inf")
+    epochs = config["training"]["epochs"]
+
+    for epoch in range(epochs):
+        train_metrics = run_v2_epoch(
+            train_loader, esm2, soft_prompt, classifier, loss_fn, conditioning_field, device, optimizer
+        )
+        val_metrics = run_v2_epoch(
+            val_loader,
+            esm2,
+            soft_prompt,
+            classifier,
+            loss_fn,
+            conditioning_field,
+            device,
+            optimizer=None,
+        )
+
+        wandb.log(
+            {
+                "epoch": epoch,
+                "learning_rate": optimizer.param_groups[0]["lr"],
+                **{f"train/{key}": value for key, value in train_metrics.items()},
+                **{f"val/{key}": value for key, value in val_metrics.items()},
+            }
+        )
+
+        # Checkpoint on best total val loss only, same criterion as V1 --
+        # each V2 run has exactly one loss term, so 'total' is just that
+        # term's weighted value.
+        if val_metrics["total"] < best_val_loss:
+            best_val_loss = val_metrics["total"]
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "soft_prompt_state_dict": soft_prompt.state_dict(),
+                    "classifier_state_dict": classifier.state_dict(),
+                    "best_val_loss": best_val_loss,
+                },
+                checkpoint_path,
+            )
+
+    wandb.finish()
+
+
 def main() -> None:
-    """CLI entry point: python -m src.training.train --config <path>."""
-    parser = argparse.ArgumentParser(description="Train the V1 AMR soft-prompting model.")
+    """CLI entry point: python -m src.training.train --config <path>.
+
+    Dispatches to train_v2() if the loaded config has a 'task' section (the
+    four gpu_task{1,2}_*.yaml configs), else falls back to train() (V1's
+    fixed-architecture path, e.g. gpu_server_{internal,external}.yaml) --
+    the config file alone decides which pipeline runs, no separate flag.
+    """
+    parser = argparse.ArgumentParser(description="Train an AMR soft-prompting model (V1 or V2).")
     parser.add_argument(
         "--config", required=True, help="Path to a config YAML, e.g. configs/gpu_server_internal.yaml"
     )
     args = parser.parse_args()
 
     config = load_config(args.config)
-    train(config)
+    if "task" in config:
+        train_v2(config)
+    else:
+        train(config)
 
 
 if __name__ == "__main__":

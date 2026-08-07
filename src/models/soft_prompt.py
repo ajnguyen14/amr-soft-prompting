@@ -67,3 +67,41 @@ class SoftPromptModule(nn.Module):
         # vectors into a (B, 2*embed_dim) tensor with no token structure.
         soft_prompts = torch.stack([mechanism_vector, drug_class_vector], dim=1)
         return soft_prompts
+
+
+class SingleFieldSoftPrompt(nn.Module):
+    """Encodes one categorical field as a single soft prompt token.
+
+    V2's Runs 1-3 (CLAUDE.md's Single-Head Architecture table) each condition
+    on exactly one categorical field -- amr_gene_family for Runs 1/2, a
+    TA-proximity category for Run 3 -- unlike V1's SoftPromptModule, which
+    jointly encodes two fields (mechanism + drug_class) into two tokens. Kept
+    as a separate class rather than generalizing SoftPromptModule in place,
+    since V1's two trained checkpoints' state_dicts are keyed to
+    SoftPromptModule's existing attribute names.
+
+    Args:
+        vocab_size: Size of the conditioning field's label vocabulary.
+        embed_dim: Output embedding dimension; must equal ESM2Wrapper.embed_dim
+            so no projection layer is needed.
+    """
+
+    # Single source of truth for callers computing ESM2Wrapper.output_dim in
+    # 'external' mode, instead of each caller re-hardcoding the number 1.
+    NUM_PROMPT_TOKENS = 1
+
+    def __init__(self, vocab_size: int, embed_dim: int) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+
+    def forward(self, field_index: torch.Tensor) -> torch.Tensor:
+        """Encode a categorical field into 1 soft prompt token.
+
+        Args:
+            field_index: Long tensor of shape (B,) -- the conditioning
+                field's vocabulary index for each sample.
+
+        Returns:
+            Tensor of shape (B, 1, embed_dim).
+        """
+        return self.embedding(field_index).unsqueeze(1)

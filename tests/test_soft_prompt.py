@@ -7,7 +7,7 @@ on CPU, matching the 8M-model smoke-test convention used elsewhere in tests/.
 import pytest
 import torch
 
-from src.models.soft_prompt import SoftPromptModule
+from src.models.soft_prompt import SingleFieldSoftPrompt, SoftPromptModule
 
 EMBED_DIM = 320
 NUM_MECHANISMS = 10
@@ -75,6 +75,43 @@ class TestOutputNonZero:
 class TestTrainableParameters:
     def test_all_parameters_trainable(self, soft_prompt):
         params = list(soft_prompt.parameters())
+        n_frozen = sum(1 for p in params if not p.requires_grad)
+        assert len(params) > 0
+        assert n_frozen == 0
+
+
+# ---------------------------------------------------------------------------
+# SingleFieldSoftPrompt (V2 -- Runs 1-3, one categorical conditioning field)
+# ---------------------------------------------------------------------------
+
+VOCAB_SIZE = 12
+
+
+@pytest.fixture(scope="module")
+def single_field_soft_prompt() -> SingleFieldSoftPrompt:
+    """SingleFieldSoftPrompt loaded once per test module."""
+    return SingleFieldSoftPrompt(VOCAB_SIZE, EMBED_DIM)
+
+
+class TestSingleFieldOutputShape:
+    @pytest.mark.parametrize("batch_size", [1, 2, 4])
+    def test_shape(self, single_field_soft_prompt, batch_size):
+        torch.manual_seed(0)
+        field_index = torch.randint(0, VOCAB_SIZE, (batch_size,))
+        out = single_field_soft_prompt(field_index)
+        assert out.shape == (batch_size, SingleFieldSoftPrompt.NUM_PROMPT_TOKENS, EMBED_DIM)
+
+
+class TestSingleFieldOutputDtype:
+    def test_dtype_is_float32(self, single_field_soft_prompt):
+        field_index = torch.tensor([0, 1])
+        out = single_field_soft_prompt(field_index)
+        assert out.dtype == torch.float32
+
+
+class TestSingleFieldTrainableParameters:
+    def test_all_parameters_trainable(self, single_field_soft_prompt):
+        params = list(single_field_soft_prompt.parameters())
         n_frozen = sum(1 for p in params if not p.requires_grad)
         assert len(params) > 0
         assert n_frozen == 0

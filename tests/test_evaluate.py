@@ -12,9 +12,13 @@ from typing import Any
 import pytest
 import torch
 
-from src.eval.evaluate import evaluate, top_confused_pairs
+from src.eval.evaluate import (
+    evaluate,
+    evaluate_v2,
+    top_confused_pairs,
+)
 from src.data.card_parser import load_card_dataset
-from src.training.train import train
+from src.training.train import train, train_v2
 
 MODEL_NAME = "facebook/esm2_t6_8M_UR50D"
 NUM_ACCESSIONS_PER_MECHANISM = 10  # -> 8/1/1 train/val/test split per mechanism
@@ -78,6 +82,21 @@ def _make_config(
     }
 
 
+def _make_v2_config(
+    fasta_path: Path,
+    aro_index_path: Path,
+    output_dir: Path,
+    conditioning_field: str,
+    target_field: str,
+    injection_mode: str = "internal",
+) -> dict[str, Any]:
+    """Small synthetic V2 config: 8M model, CPU, tiny classifier, 1 epoch."""
+    config = _make_config(fasta_path, aro_index_path, output_dir, injection_mode)
+    config["loss"] = {"weight": 1.0}
+    config["task"] = {"conditioning_field": conditioning_field, "target_field": target_field}
+    return config
+
+
 @pytest.fixture(scope="module")
 def card_files(tmp_path_factory) -> tuple[Path, Path]:
     tmp_path = tmp_path_factory.mktemp("card_data")
@@ -90,6 +109,28 @@ def trained_checkpoint(card_files, tmp_path_factory, monkeypatch_module) -> tupl
     output_dir = tmp_path_factory.mktemp("outputs")
     config = _make_config(fasta_path, aro_index_path, output_dir)
     train(config)
+    return config, output_dir / "best_model.pt"
+
+
+@pytest.fixture(scope="module")
+def trained_v2_checkpoint_ce(card_files, tmp_path_factory, monkeypatch_module) -> tuple[dict, Path]:
+    """Run 2 shape: conditioning on amr_gene_family, target resistance_mechanism (loss_type='ce')."""
+    fasta_path, aro_index_path = card_files
+    output_dir = tmp_path_factory.mktemp("outputs_v2_ce")
+    config = _make_v2_config(
+        fasta_path, aro_index_path, output_dir, "amr_gene_family", "resistance_mechanism"
+    )
+    train_v2(config)
+    return config, output_dir / "best_model.pt"
+
+
+@pytest.fixture(scope="module")
+def trained_v2_checkpoint_bce(card_files, tmp_path_factory, monkeypatch_module) -> tuple[dict, Path]:
+    """Run 1 shape: conditioning on amr_gene_family, target drug_class (loss_type='bce')."""
+    fasta_path, aro_index_path = card_files
+    output_dir = tmp_path_factory.mktemp("outputs_v2_bce")
+    config = _make_v2_config(fasta_path, aro_index_path, output_dir, "amr_gene_family", "drug_class")
+    train_v2(config)
     return config, output_dir / "best_model.pt"
 
 
@@ -162,3 +203,71 @@ class TestTopConfusedPairs:
         labels = ["a", "b", "c"]
         pairs = top_confused_pairs(cm, labels, top_n=2)
         assert len(pairs) == 2
+
+
+class TestEvaluateV2SingleLabel:
+    """target_field='resistance_mechanism' (Run 2 shape, loss_type='ce')."""
+
+    def test_writes_results_json_with_expected_top_level_keys(self, trained_v2_checkpoint_ce):
+        config, checkpoint_path = trained_v2_checkpoint_ce
+        results = evaluate_v2(config, checkpoint_path)
+
+        assert set(results.keys()) == {
+            "checkpoint", "checkpoint_epoch", "eval_dir", "config", "timestamp",
+            "aggregate", "resistance_mechanism",
+        }
+
+        results_json_path = Path(results["eval_dir"]) / "evaluation_results.json"
+        assert results_json_path.exists()
+        with open(results_json_path) as f:
+            on_disk = json.load(f)
+        assert on_disk["checkpoint"] == results["checkpoint"]
+
+    def test_reports_accuracy_macro_f1_and_csv(self, trained_v2_checkpoint_ce):
+        config, checkpoint_path = trained_v2_checkpoint_ce
+        results = evaluate_v2(config, checkpoint_path)
+
+        target_results = results["resistance_mechanism"]
+        assert 0.0 <= target_results["accuracy"] <= 1.0
+        assert 0.0 <= target_results["macro_f1"] <= 1.0
+        assert isinstance(target_results["top_confused_pairs"], list)
+
+        csv_path = Path(target_results["confusion_matrix_csv"])
+        assert csv_path.exists()
+        assert csv_path.name == "confusion_matrix_resistance_mechanism.csv"
+
+    def test_aggregate_matches_compute_single_target_metrics_keys(self, trained_v2_checkpoint_ce):
+        config, checkpoint_path = trained_v2_checkpoint_ce
+        results = evaluate_v2(config, checkpoint_path)
+        assert set(results["aggregate"].keys()) == {"resistance_mechanism_accuracy"}
+
+
+class TestEvaluateV2MultiLabel:
+    """target_field='drug_class' (Run 1 shape, loss_type='bce')."""
+
+    def test_writes_results_json_with_expected_top_level_keys(self, trained_v2_checkpoint_bce):
+        config, checkpoint_path = trained_v2_checkpoint_bce
+        results = evaluate_v2(config, checkpoint_path)
+
+        assert set(results.keys()) == {
+            "checkpoint", "checkpoint_epoch", "eval_dir", "config", "timestamp",
+            "aggregate", "drug_class",
+        }
+
+    def test_reports_subset_accuracy_micro_macro_f1_and_csv(self, trained_v2_checkpoint_bce):
+        config, checkpoint_path = trained_v2_checkpoint_bce
+        results = evaluate_v2(config, checkpoint_path)
+
+        target_results = results["drug_class"]
+        assert 0.0 <= target_results["subset_accuracy"] <= 1.0
+        assert 0.0 <= target_results["micro_f1"] <= 1.0
+        assert 0.0 <= target_results["macro_f1"] <= 1.0
+
+        csv_path = Path(target_results["per_class_f1_csv"])
+        assert csv_path.exists()
+        assert csv_path.name == "per_class_f1_drug_class.csv"
+
+    def test_aggregate_matches_expected_keys(self, trained_v2_checkpoint_bce):
+        config, checkpoint_path = trained_v2_checkpoint_bce
+        results = evaluate_v2(config, checkpoint_path)
+        assert set(results["aggregate"].keys()) == {"drug_class_subset_accuracy", "drug_class_micro_f1"}

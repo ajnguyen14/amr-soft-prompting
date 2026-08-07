@@ -17,8 +17,11 @@ from src.training.train import (
     build_dataloaders_from_records,
     build_models,
     build_optimizer,
+    build_v2_models,
     run_epoch,
+    run_v2_epoch,
     train,
+    train_v2,
 )
 from src.data.card_parser import load_card_dataset
 
@@ -87,6 +90,21 @@ def _make_config(
         "loss": {"weight_amr_gene_family": 1.0},
         "logging": {"wandb_project": "test-project", "wandb_run_name": "test-run"},
     }
+
+
+def _make_v2_config(
+    fasta_path: Path,
+    aro_index_path: Path,
+    output_dir: Path,
+    injection_mode: str,
+    conditioning_field: str,
+    target_field: str,
+) -> dict[str, Any]:
+    """Small synthetic V2 config: 8M model, CPU, tiny classifier, 1 epoch."""
+    config = _make_config(fasta_path, aro_index_path, output_dir, injection_mode)
+    config["loss"] = {"weight": 1.0}
+    config["task"] = {"conditioning_field": conditioning_field, "target_field": target_field}
+    return config
 
 
 @pytest.fixture(scope="module")
@@ -218,3 +236,185 @@ class TestTrainIntegration:
             "epoch", "soft_prompt_state_dict", "classifier_state_dict", "best_val_loss",
         }
         assert torch.isfinite(torch.tensor(checkpoint["best_val_loss"]))
+
+
+# ---------------------------------------------------------------------------
+# build_v2_models
+# ---------------------------------------------------------------------------
+
+
+class TestBuildV2Models:
+    def test_ce_target_wires_correct_shapes(self, card_files):
+        """conditioning_field='amr_gene_family', target_field='resistance_mechanism' (Run 2 shape)."""
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        _, _, _, label_vocabularies = build_dataloaders_from_records(records, batch_size=2)
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "amr_gene_family", "resistance_mechanism",
+        )
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+
+        assert soft_prompt.embedding.num_embeddings == len(label_vocabularies["amr_gene_family"])
+        assert classifier.head.out_features == len(label_vocabularies["resistance_mechanism"])
+        assert classifier.target_name == "resistance_mechanism"
+        assert loss_fn.loss_type == "ce"
+        assert loss_fn.batch_key == "resistance_mechanism"
+
+    def test_bce_target_wires_correct_shapes(self, card_files):
+        """conditioning_field='amr_gene_family', target_field='drug_class' (Run 1 shape)."""
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        _, _, _, label_vocabularies = build_dataloaders_from_records(records, batch_size=2)
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "amr_gene_family", "drug_class",
+        )
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+
+        assert classifier.head.out_features == len(label_vocabularies["drug_class"])
+        assert classifier.target_name == "drug_class"
+        assert loss_fn.loss_type == "bce"
+        assert loss_fn.batch_key == "drug_class_labels"
+
+    def test_multilabel_conditioning_field_raises(self, card_files):
+        """drug_class is multi-label -- can't feed SingleFieldSoftPrompt an index tensor."""
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        _, _, _, label_vocabularies = build_dataloaders_from_records(records, batch_size=2)
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "drug_class", "amr_gene_family",
+        )
+        with pytest.raises(ValueError, match="multi-label"):
+            build_v2_models(config, label_vocabularies, "cpu")
+
+
+# ---------------------------------------------------------------------------
+# run_v2_epoch
+# ---------------------------------------------------------------------------
+
+
+class TestRunV2Epoch:
+    @pytest.fixture()
+    def wired_v2_models(self, card_files):
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        train_loader, _, _, label_vocabularies = build_dataloaders_from_records(
+            records, batch_size=2
+        )
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "amr_gene_family", "resistance_mechanism",
+        )
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+        return train_loader, esm2, soft_prompt, classifier, loss_fn
+
+    def test_train_epoch_returns_finite_metrics(self, wired_v2_models):
+        train_loader, esm2, soft_prompt, classifier, loss_fn = wired_v2_models
+        optimizer = build_optimizer(
+            "adam", list(soft_prompt.parameters()) + list(classifier.parameters()), 1e-3
+        )
+        metrics = run_v2_epoch(
+            train_loader, esm2, soft_prompt, classifier, loss_fn, "amr_gene_family", "cpu", optimizer
+        )
+        expected_keys = {"total", "resistance_mechanism", "resistance_mechanism_accuracy"}
+        assert set(metrics.keys()) == expected_keys
+        for value in metrics.values():
+            assert torch.isfinite(torch.tensor(value))
+
+    def test_training_epoch_updates_trainable_params(self, wired_v2_models):
+        train_loader, esm2, soft_prompt, classifier, loss_fn = wired_v2_models
+        params_before = [p.clone() for p in soft_prompt.parameters()]
+        optimizer = build_optimizer(
+            "adam", list(soft_prompt.parameters()) + list(classifier.parameters()), 1e-2
+        )
+        run_v2_epoch(
+            train_loader, esm2, soft_prompt, classifier, loss_fn, "amr_gene_family", "cpu", optimizer
+        )
+        params_after = list(soft_prompt.parameters())
+        assert any(
+            not torch.equal(before, after)
+            for before, after in zip(params_before, params_after)
+        )
+
+    def test_eval_epoch_does_not_update_params(self, wired_v2_models):
+        train_loader, esm2, soft_prompt, classifier, loss_fn = wired_v2_models
+        params_before = [p.clone() for p in soft_prompt.parameters()]
+        run_v2_epoch(
+            train_loader, esm2, soft_prompt, classifier, loss_fn, "amr_gene_family", "cpu",
+            optimizer=None,
+        )
+        params_after = list(soft_prompt.parameters())
+        assert all(
+            torch.equal(before, after)
+            for before, after in zip(params_before, params_after)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Full train_v2() integration
+# ---------------------------------------------------------------------------
+
+
+class TestTrainV2Integration:
+    @pytest.mark.parametrize(
+        "conditioning_field,target_field",
+        [
+            ("amr_gene_family", "resistance_mechanism"),  # Run 2 shape, loss_type='ce'
+            ("amr_gene_family", "drug_class"),  # Run 1 shape, loss_type='bce'
+        ],
+    )
+    def test_train_v2_runs_and_writes_checkpoint(
+        self, card_files, tmp_path, monkeypatch, conditioning_field, target_field
+    ):
+        monkeypatch.setenv("WANDB_MODE", "disabled")
+        fasta_path, aro_index_path = card_files
+        output_dir = tmp_path / f"outputs_v2_{target_field}"
+        config = _make_v2_config(
+            fasta_path, aro_index_path, output_dir, "internal", conditioning_field, target_field
+        )
+
+        train_v2(config)
+
+        checkpoint_path = output_dir / "best_model.pt"
+        assert checkpoint_path.exists()
+
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        assert set(checkpoint.keys()) == {
+            "epoch", "soft_prompt_state_dict", "classifier_state_dict", "best_val_loss",
+        }
+        assert torch.isfinite(torch.tensor(checkpoint["best_val_loss"]))
+
+    def test_main_dispatches_to_train_v2_when_task_section_present(
+        self, card_files, tmp_path, monkeypatch
+    ):
+        """main()'s dispatch logic: a config file with a 'task' section runs the V2 path
+        end-to-end through the actual --config CLI entry point, not just build_v2_models
+        called directly.
+        """
+        import yaml
+
+        from src.training.train import main
+
+        monkeypatch.setenv("WANDB_MODE", "disabled")
+        fasta_path, aro_index_path = card_files
+        output_dir = tmp_path / "outputs_main_dispatch"
+
+        config = _make_v2_config(
+            fasta_path, aro_index_path, output_dir, "internal",
+            "amr_gene_family", "resistance_mechanism",
+        )
+        # load_config resolves base.yaml as config_path's sibling, so the
+        # override file needs its own directory with an (empty) base.yaml.
+        configs_dir = tmp_path / "configs"
+        configs_dir.mkdir()
+        (configs_dir / "base.yaml").write_text("{}\n")
+        config_path = configs_dir / "task_override.yaml"
+        config_path.write_text(yaml.dump(config))
+
+        monkeypatch.setattr("sys.argv", ["run_training.py", "--config", str(config_path)])
+        main()
+
+        checkpoint_path = output_dir / "best_model.pt"
+        assert checkpoint_path.exists()
