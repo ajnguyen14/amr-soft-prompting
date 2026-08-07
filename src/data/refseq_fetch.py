@@ -14,6 +14,7 @@ key, 10 req/sec with one).
 """
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -104,7 +105,28 @@ def fetch_representative_sequences(
             time.sleep(delay_seconds)
             continue
 
-        dest.write_text(fasta_text)
+        # NCBI can return HTTP 200 with an empty body or an error page (not
+        # an exception) for a withdrawn/suppressed accession -- a minimal
+        # sanity check that this actually looks like FASTA, not a silent
+        # write of garbage that would later poison build_blast_db.
+        if not fasta_text.strip() or not fasta_text.lstrip().startswith(">"):
+            logger.warning(
+                "Fetched content for %s is not valid FASTA (empty or missing '>' header) "
+                "-- treating as failed, not writing to disk",
+                accession,
+            )
+            result.failed[accession] = "fetched content is not valid FASTA (empty or missing '>' header)"
+            time.sleep(delay_seconds)
+            continue
+
+        # Write via a temp file + atomic rename (os.replace), not a direct
+        # write_text -- a process killed mid-write (OOM, SSH drop) would
+        # otherwise leave a truncated file at `dest` that the resume check
+        # above (`dest.exists()`) would treat as permanently valid on every
+        # future run, silently feeding a corrupt genome downstream.
+        tmp_path = dest.with_suffix(dest.suffix + ".tmp")
+        tmp_path.write_text(fasta_text)
+        os.replace(tmp_path, dest)
         result.succeeded.append(accession)
         time.sleep(delay_seconds)
 

@@ -1,13 +1,21 @@
 """Match CARD DNA accessions against TADB 3.0 replicon accessions.
 
-Builds the accession-intersection prefilter for the TA-proximity pipeline
-(CLAUDE.md TA-Proximity Pipeline Step 1): only CARD ARO accessions whose DNA
-Accession shares a base RefSeq/GenBank accession with a TADB replicon are
-candidates for BLAST-based coordinate mapping. This scopes the BLAST step to
-a bounded, relevant set of replicons instead of a broad RefSeq subset.
+NOT PART OF THE LIVE PIPELINE -- superseded, kept for its accession-matching
+logic and tests only. Neither scripts/run_blast_coordinate_mapping.py nor
+scripts/run_ta_proximity.py imports match_card_to_tadb_replicons; the only
+caller is this module's own test file. It was originally built as an
+accession-intersection prefilter to scope the BLAST step to a bounded
+replicon set, but that prefilter forced ~97.6% of CARD entries into
+'unknown' regardless of whether they actually had a nearby TA locus,
+conflating "BLAST not attempted" with the real 'no_ta_locus' signal
+CLAUDE.md's vocabulary distinguishes (see docs/STATUS.md). The live pipeline
+uses src/data/refseq_representative.py's organism-taxonomy grouping to scope
+the BLAST step instead. strip_accession_version, defined here, IS still used
+live -- by src/data/ta_proximity.py, for the unrelated purpose of comparing
+BlastHit and TADBLocus replicon accessions.
 
-Note this only tells us *which replicon* a CARD gene's source sequence lives
-on -- CARD's own fmin/fmax fields are relative to its own excised gene
+This only tells us *which replicon* a CARD gene's source sequence lives on
+-- CARD's own fmin/fmax fields are relative to its own excised gene
 fragment, not the replicon, so they cannot supply real genomic coordinates
 (confirmed empirically: fmax - fmin == len(sequence) for all 6404 CARD
 records with numeric coordinates). BLAST against the matched replicon is
@@ -66,6 +74,10 @@ def match_card_to_tadb_replicons(
     tadb_loci: list[TADBLocus],
 ) -> list[AccessionMatch]:
     """Find CARD ARO accessions whose DNA Accession matches a TADB replicon.
+
+    NOT PART OF THE LIVE PIPELINE -- see this module's docstring for why
+    (superseded by refseq_representative.py's organism-taxonomy grouping).
+    Exercised only by this module's own test file.
 
     Args:
         aro_index_path: Path to aro_index.tsv.

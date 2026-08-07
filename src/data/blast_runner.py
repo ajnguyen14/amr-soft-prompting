@@ -20,7 +20,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,9 @@ class BlastHit:
         strand: 'plus' or 'minus'.
         percent_identity: BLAST pident for the hit, in [0, 100].
         evalue: BLAST e-value for the hit.
+        bitscore: BLAST bitscore for the hit -- used as run_tblastn's
+            deterministic tie-break when two hits share an identical e-value
+            (common at e-value 0.0 for high-identity conserved domains).
         query_coverage: BLAST qcovs for the hit, in [0, 100].
     """
 
@@ -68,6 +71,7 @@ class BlastHit:
     strand: str
     percent_identity: float
     evalue: float
+    bitscore: float
     query_coverage: float
 
 
@@ -126,8 +130,36 @@ def _parse_tblastn_line(line: str) -> BlastHit:
         strand=sstrand,
         percent_identity=float(pident),
         evalue=float(evalue),
+        bitscore=float(bitscore),
         query_coverage=float(qcovs),
     )
+
+
+def _is_better_hit(candidate: BlastHit, current: BlastHit) -> bool:
+    """Deterministic ordering for run_tblastn's best-hit-per-query selection.
+
+    Lower e-value wins. On an exact e-value tie (common at e-value 0.0 for
+    high-identity conserved domains, where BLAST's underlying precision
+    can't distinguish two HSPs), higher bitscore wins as a more granular
+    secondary signal. If still tied, (replicon_accession, start) breaks the
+    tie as a final stable key. This makes the choice independent of
+    tblastn's output row order, which is not a documented guarantee (a
+    previous version relied on `hit.evalue < current_best.evalue`, silently
+    keeping whichever tied row appeared first -- nondeterministic across
+    BLAST+ versions/reruns).
+
+    Args:
+        candidate: A newly parsed hit for the same query as current.
+        current: The best hit selected so far for that query.
+
+    Returns:
+        True if candidate should replace current as the best hit.
+    """
+    if candidate.evalue != current.evalue:
+        return candidate.evalue < current.evalue
+    if candidate.bitscore != current.bitscore:
+        return candidate.bitscore > current.bitscore
+    return (candidate.replicon_accession, candidate.start) < (current.replicon_accession, current.start)
 
 
 def run_tblastn(
@@ -136,12 +168,13 @@ def run_tblastn(
     blast_bin_dir: Optional[str | Path] = None,
     min_identity: float = 95.0,
     min_query_coverage: float = 90.0,
+    evalue: float = 1e-10,
 ) -> list[BlastHit]:
     """Run tblastn and return one best hit per query that clears both thresholds.
 
     A query can produce multiple HSPs (e.g. repeated domains); this keeps
-    only the lowest-e-value hit per query ID among those passing the
-    identity/coverage thresholds, so callers get at most one BlastHit per
+    only the best hit per query ID (see _is_better_hit) among those passing
+    the identity/coverage thresholds, so callers get at most one BlastHit per
     query sequence.
 
     Args:
@@ -153,6 +186,11 @@ def run_tblastn(
             TA-Proximity Pipeline Step 1: conservative default, not yet
             finalized -- 95% here).
         min_query_coverage: Minimum percent query coverage to accept a hit.
+        evalue: tblastn's -evalue cutoff (CLAUDE.md TA-Proximity Pipeline
+            Step 1: conservative default, not yet finalized -- 1e-10 here).
+            Sourced from config['blast']['evalue'] by callers, matching
+            min_identity/min_query_coverage's existing pattern rather than
+            being a bare literal.
 
     Returns:
         List of best BlastHit per query ID that passed both thresholds.
@@ -172,16 +210,13 @@ def run_tblastn(
             "-query", str(query_fasta_path),
             "-db", str(db_path),
             "-outfmt", _OUTFMT,
-            "-evalue", "1e-10",
+            "-evalue", str(evalue),
         ],
         check=True,
         capture_output=True,
         text=True,
     )
 
-    # BLAST's tabular output is already sorted by e-value ascending within
-    # each query in practice, but that ordering isn't a documented guarantee,
-    # so the best hit per query is picked explicitly rather than relied on.
     best_hit_by_query: dict[str, BlastHit] = {}
     for line in proc.stdout.splitlines():
         if not line.strip():
@@ -190,7 +225,7 @@ def run_tblastn(
         if hit.percent_identity < min_identity or hit.query_coverage < min_query_coverage:
             continue
         current_best = best_hit_by_query.get(hit.aro_accession)
-        if current_best is None or hit.evalue < current_best.evalue:
+        if current_best is None or _is_better_hit(hit, current_best):
             best_hit_by_query[hit.aro_accession] = hit
 
     return list(best_hit_by_query.values())
@@ -203,12 +238,20 @@ def blast_card_against_representatives(
     blast_bin_dir: Optional[str | Path] = None,
     min_identity: float = 95.0,
     min_query_coverage: float = 90.0,
+    evalue: float = 1e-10,
+    on_group_complete: Optional[Callable[[str, list[BlastHit]], None]] = None,
 ) -> list[BlastHit]:
     """BLAST CARD proteins against their organism group's representative genome.
 
     One BLAST database build + one tblastn call per representative accession
     (not per CARD protein), batching all of that group's queries into a
     single multi-FASTA per call.
+
+    A group whose build_blast_db/run_tblastn call raises
+    subprocess.CalledProcessError (e.g. a malformed/truncated fetched genome)
+    is logged and skipped rather than aborting the whole ~738-group batch --
+    a single bad genome no longer discards every other group's
+    already-completed hits.
 
     Args:
         query_sequences_by_group: Dict mapping representative accession to a
@@ -223,6 +266,14 @@ def blast_card_against_representatives(
             If None, relies on both being on PATH.
         min_identity: Passed through to run_tblastn.
         min_query_coverage: Passed through to run_tblastn.
+        evalue: Passed through to run_tblastn.
+        on_group_complete: Optional callback invoked as
+            (representative_accession, group_hits) immediately after each
+            group finishes successfully, before moving to the next group --
+            lets the caller checkpoint accumulated results to disk so a
+            crash partway through the batch doesn't lose already-completed
+            groups' work (this function itself only returns once, at the
+            very end).
 
     Returns:
         All BlastHit results across every representative group, one entry
@@ -243,25 +294,39 @@ def blast_card_against_representatives(
             continue
 
         db_path = blastdb_dir / representative_accession
-        build_blast_db(fasta_path, db_path, blast_bin_dir=blast_bin_dir)
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".fasta", delete=False) as query_file:
-            for aro_accession, sequence in sequences_by_aro.items():
-                query_file.write(f">{aro_accession}\n{sequence}\n")
-            query_fasta_path = query_file.name
-
+        query_fasta_path: Optional[str] = None
         try:
+            build_blast_db(fasta_path, db_path, blast_bin_dir=blast_bin_dir)
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".fasta", delete=False) as query_file:
+                for aro_accession, sequence in sequences_by_aro.items():
+                    query_file.write(f">{aro_accession}\n{sequence}\n")
+                query_fasta_path = query_file.name
+
             hits = run_tblastn(
                 query_fasta_path,
                 db_path,
                 blast_bin_dir=blast_bin_dir,
                 min_identity=min_identity,
                 min_query_coverage=min_query_coverage,
+                evalue=evalue,
             )
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "BLAST failed for representative accession %s (%d ARO entries skipped, "
+                "not aborting the rest of the batch): %s",
+                representative_accession,
+                len(sequences_by_aro),
+                exc,
+            )
+            continue
         finally:
-            Path(query_fasta_path).unlink()
+            if query_fasta_path is not None:
+                Path(query_fasta_path).unlink(missing_ok=True)
 
         all_hits.extend(hits)
+        if on_group_complete is not None:
+            on_group_complete(representative_accession, hits)
 
     total_queries = sum(len(v) for v in query_sequences_by_group.values())
     logger.info(

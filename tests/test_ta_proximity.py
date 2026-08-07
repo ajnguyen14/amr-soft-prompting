@@ -14,6 +14,7 @@ def _make_hit(aro_accession: str, replicon_accession: str, start: int, end: int)
         strand="plus",
         percent_identity=100.0,
         evalue=0.0,
+        bitscore=500.0,
         query_coverage=100.0,
     )
 

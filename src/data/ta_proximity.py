@@ -48,12 +48,22 @@ class TAProximityResult:
             when category == 'distance'. None otherwise.
         nearest_locus_id: TADBLocus.locus_id of the nearest same-replicon TA
             locus, only set when category == 'distance'. None otherwise.
+        used_own_accession: True if this ARO accession was BLASTed against
+            its own recorded genome; False if against a substituted
+            (different-strain) representative genome (see
+            refseq_representative.AroRepresentativeMapping); None if not
+            known (accession absent from the query universe passed in).
+            Without this, a consumer of this result can't distinguish a
+            distance/no_ta_locus computed against the gene's actual source
+            genome from one computed against a different strain's assembly
+            -- a real bias affecting 83% of CARD entries (docs/STATUS.md).
     """
 
     aro_accession: str
     category: str
     distance_bp: Optional[int] = None
     nearest_locus_id: Optional[str] = None
+    used_own_accession: Optional[bool] = None
 
 
 def _distance_to_locus(hit: BlastHit, locus: TADBLocus) -> int:
@@ -80,6 +90,7 @@ def compute_ta_proximity(
     hits: list[BlastHit],
     tadb_loci: list[TADBLocus],
     all_aro_accessions: list[str],
+    used_own_accession_by_aro: Optional[dict[str, bool]] = None,
 ) -> list[TAProximityResult]:
     """Classify every ARO accession's TA-locus proximity from BLAST hits.
 
@@ -93,10 +104,19 @@ def compute_ta_proximity(
             from `hits` are categorized 'unknown' rather than silently
             dropped, since the TA-proximity vocabulary needs an explicit
             value for every accession, not just the ones BLAST succeeded on.
+        used_own_accession_by_aro: Optional dict from
+            refseq_representative.AroRepresentativeMapping (aro_accession ->
+            used_own_accession), used to populate
+            TAProximityResult.used_own_accession so the substitution-genome
+            bias is auditable on the final result, not just an intermediate
+            Step 1 detail. An accession absent from this dict gets
+            used_own_accession=None (unknown), not False.
 
     Returns:
         One TAProximityResult per accession in all_aro_accessions.
     """
+    used_own_accession_by_aro = used_own_accession_by_aro or {}
+
     loci_by_replicon: dict[str, list[TADBLocus]] = {}
     for locus in tadb_loci:
         loci_by_replicon.setdefault(locus.replicon_accession, []).append(locus)
@@ -105,15 +125,24 @@ def compute_ta_proximity(
 
     results: list[TAProximityResult] = []
     for aro_accession in all_aro_accessions:
+        used_own = used_own_accession_by_aro.get(aro_accession)
         hit = hit_by_aro.get(aro_accession)
         if hit is None:
-            results.append(TAProximityResult(aro_accession=aro_accession, category=_UNKNOWN))
+            results.append(
+                TAProximityResult(
+                    aro_accession=aro_accession, category=_UNKNOWN, used_own_accession=used_own
+                )
+            )
             continue
 
         replicon = strip_accession_version(hit.replicon_accession)
         same_replicon_loci = loci_by_replicon.get(replicon, [])
         if not same_replicon_loci:
-            results.append(TAProximityResult(aro_accession=aro_accession, category=_NO_TA_LOCUS))
+            results.append(
+                TAProximityResult(
+                    aro_accession=aro_accession, category=_NO_TA_LOCUS, used_own_accession=used_own
+                )
+            )
             continue
 
         nearest = min(same_replicon_loci, key=lambda locus: _distance_to_locus(hit, locus))
@@ -123,6 +152,7 @@ def compute_ta_proximity(
                 category=_DISTANCE,
                 distance_bp=_distance_to_locus(hit, nearest),
                 nearest_locus_id=nearest.locus_id,
+                used_own_accession=used_own,
             )
         )
 

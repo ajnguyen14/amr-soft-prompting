@@ -76,10 +76,13 @@ def parse_aro_index(tsv_path: str | Path) -> dict[str, dict[str, str]]:
     """Load aro_index.tsv into a dict keyed by ARO accession string.
 
     Public (not underscore-prefixed) because src/data/card_tadb_matcher.py
-    also needs raw row access (specifically the 'DNA Accession' column) for
-    the V2 TA-proximity accession prefilter -- CARDRecord doesn't carry that
-    field, so re-reading aro_index.tsv via this shared helper avoids
-    duplicating the TSV-parsing logic.
+    needs raw row access (specifically the 'DNA Accession' column) --
+    CARDRecord doesn't carry that field, so re-reading aro_index.tsv via
+    this shared helper avoids duplicating the TSV-parsing logic. Note
+    card_tadb_matcher.py itself is NOT part of the live TA-proximity
+    pipeline (superseded -- see that module's docstring); this is a
+    historical reason for making the function public, not a claim that its
+    caller is currently load-bearing.
 
     Args:
         tsv_path: Path to aro_index.tsv.

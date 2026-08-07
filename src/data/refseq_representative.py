@@ -64,11 +64,25 @@ def load_aro_taxonomy_records(card_json_path: str | Path) -> list[AroTaxonomyRec
         accession and NCBI taxonomy info. Entries missing either (e.g. no
         model_sequences block, or an incomplete taxonomy block) are skipped
         and counted in the log line.
+
+    Raises:
+        ValueError: If the same ARO accession appears with two different
+            NCBI_taxonomy_id values across its model_sequences entries.
+            map_aro_to_representative assumes exactly one taxonomy (organism)
+            group per ARO accession -- select_representative_accessions
+            groups by taxonomy_id, so a silent multi-group ARO would let
+            downstream code (e.g. ta_proximity.py's hit_by_aro dict) pick an
+            arbitrary one of two different representative genomes with no
+            warning. Not triggered by the current real card.json (verified:
+            0/6404 entries have >1 distinct taxonomy_id), but a future CARD
+            release could populate model_sequences with multiple entries per
+            ARO, so this is checked rather than assumed.
     """
     with open(card_json_path, encoding="utf-8") as fh:
         card = json.load(fh)
 
     records: list[AroTaxonomyRecord] = []
+    taxonomy_id_by_aro: dict[str, str] = {}
     skipped = 0
     for entry in card.values():
         if not isinstance(entry, dict) or "model_sequences" not in entry:
@@ -89,6 +103,16 @@ def load_aro_taxonomy_records(card_json_path: str | Path) -> list[AroTaxonomyRec
             if not (dna_acc and tax_id and tax_name):
                 skipped += 1
                 continue
+
+            existing_tax_id = taxonomy_id_by_aro.get(aro_acc)
+            if existing_tax_id is not None and existing_tax_id != tax_id:
+                raise ValueError(
+                    f"ARO accession {aro_acc} has inconsistent NCBI_taxonomy_id values: "
+                    f"{existing_tax_id!r} vs {tax_id!r} -- map_aro_to_representative assumes "
+                    "exactly one taxonomy group per ARO accession."
+                )
+            taxonomy_id_by_aro[aro_acc] = tax_id
+
             records.append(
                 AroTaxonomyRecord(
                     aro_accession=aro_acc,

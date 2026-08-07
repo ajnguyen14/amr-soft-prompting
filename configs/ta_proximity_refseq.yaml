@@ -5,6 +5,12 @@ paths:
   refseq_output_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/refseq/"
   blastdb_dir: "/data/aidannguyen/amr-soft-prompting/data/raw/blastdb/"
   blast_hits_output: "/data/aidannguyen/amr-soft-prompting/data/processed/blast_hits.json"
+  # The exact set of ARO accessions run_blast_coordinate_mapping.py actually
+  # attempted to BLAST (plus each one's used_own_accession bias flag) --
+  # run_ta_proximity.py reads this instead of recomputing the taxonomy/
+  # representative/mapping logic a second time, so the two stages can't
+  # silently drift apart on what "attempted" means.
+  query_universe_output: "/data/aidannguyen/amr-soft-prompting/data/processed/blast_query_universe.json"
   ta_proximity_output: "/data/aidannguyen/amr-soft-prompting/data/processed/ta_proximity_results.json"
 
 refseq:
@@ -24,3 +30,6 @@ blast:
   # finalized. Record actual coverage achieved at these thresholds.
   min_identity: 95.0
   min_query_coverage: 90.0
+  # YAML gotcha (see CLAUDE.md): "1e-10" with no decimal point parses as a
+  # string in PyYAML, not a float -- always write "1.0e-10".
+  evalue: 1.0e-10

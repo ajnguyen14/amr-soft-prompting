@@ -27,11 +27,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data.blast_runner import BlastHit
-from src.data.refseq_representative import (
-    load_aro_taxonomy_records,
-    map_aro_to_representative,
-    select_representative_accessions,
-)
 from src.data.ta_proximity import compute_ta_proximity
 from src.data.tadb_parser import load_all_tadb_loci
 from src.utils.config import load_config
@@ -55,14 +50,30 @@ def _load_hits(blast_hits_path: str | Path) -> list[BlastHit]:
     return [BlastHit(**raw) for raw in raw_hits]
 
 
+def _load_query_universe(query_universe_path: str | Path) -> list[dict[str, Any]]:
+    """Load the query-universe artifact written by run_blast_coordinate_mapping.py.
+
+    Args:
+        query_universe_path: Path to the JSON file (list of
+            {aro_accession, representative_accession, used_own_accession}
+            dicts) written by that script.
+
+    Returns:
+        The parsed list of dicts.
+    """
+    with open(query_universe_path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def run(config: dict[str, Any]) -> None:
     """Categorize TA-locus proximity for every queryable ARO accession.
 
     Args:
         config: Merged config dict from load_config, with 'paths'
-            (card_json, blast_hits_output, ta_proximity_output) and the raw
-            TADB FASTA directory (data/raw, same as elsewhere in the
-            pipeline -- TADBLocus loading takes a directory, not a file).
+            (card_json, blast_hits_output, query_universe_output,
+            ta_proximity_output) and the raw TADB FASTA directory (data/raw,
+            same as elsewhere in the pipeline -- TADBLocus loading takes a
+            directory, not a file).
     """
     paths = config["paths"]
 
@@ -75,16 +86,23 @@ def run(config: dict[str, Any]) -> None:
     raw_dir = Path(paths["card_json"]).parent
     tadb_loci = load_all_tadb_loci(raw_dir)
 
-    # The full query universe Step 1 attempted -- every ARO accession with
-    # both a resolvable representative accession AND a CARD protein
-    # sequence, matching exactly what run_blast_coordinate_mapping.py
-    # attempted to BLAST (see that script's `unqueryable` accounting).
-    taxonomy_records = load_aro_taxonomy_records(paths["card_json"])
-    representatives = select_representative_accessions(taxonomy_records)
-    mappings = map_aro_to_representative(taxonomy_records, representatives)
-    all_aro_accessions = sorted({m.aro_accession for m in mappings})
+    # The exact query universe Step 1 actually attempted, read from the
+    # artifact run_blast_coordinate_mapping.py wrote -- NOT recomputed from
+    # card.json here. Recomputing independently previously (a) risked
+    # silent drift from what Step 1 actually BLASTed if card.json or the
+    # selection logic changed between the two script runs, and (b) included
+    # accessions with no CARD protein sequence (never attempted at all),
+    # miscategorizing them as 'unknown' (genuine BLAST failure) rather than
+    # excluding them, inflating the reported unknown rate.
+    query_universe = _load_query_universe(paths["query_universe_output"])
+    all_aro_accessions = sorted(record["aro_accession"] for record in query_universe)
+    used_own_accession_by_aro = {
+        record["aro_accession"]: record["used_own_accession"] for record in query_universe
+    }
 
-    results = compute_ta_proximity(hits, tadb_loci, all_aro_accessions)
+    results = compute_ta_proximity(
+        hits, tadb_loci, all_aro_accessions, used_own_accession_by_aro=used_own_accession_by_aro
+    )
 
     output_path = Path(paths["ta_proximity_output"])
     output_path.parent.mkdir(parents=True, exist_ok=True)
