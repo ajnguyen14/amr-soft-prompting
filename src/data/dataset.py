@@ -3,6 +3,7 @@
 import pickle
 import random
 from pathlib import Path
+from typing import Optional
 
 import torch
 from torch.utils.data import Dataset
@@ -21,11 +22,18 @@ SPLIT_ARTIFACT_FILENAME = "card_splits.pkl"
 # are single-label (CrossEntropyLoss / 'ce'); 'drug_class' is multi-label
 # (BCEWithLogitsLoss / 'bce'), so it can only ever be a prediction target,
 # never a SingleFieldSoftPrompt conditioning input (that requires a single
-# categorical index tensor).
+# categorical index tensor). 'ta_proximity' is Run 3's conditioning field
+# only (never a prediction target) -- a 3-way collapsed categorical
+# ('distance' / 'no_ta_locus' / 'unknown', per the V2 sparse-signal decision
+# in CLAUDE.md's TA-Proximity Pipeline section) copied verbatim from
+# src/data/ta_proximity.py's TAProximityResult.category, present only when
+# AMRDataset was built from records loaded with
+# card_parser.load_card_dataset's ta_proximity_path.
 TARGET_FIELD_SPECS: dict[str, dict[str, str]] = {
     "drug_class": {"batch_key": "drug_class_labels", "loss_type": "bce"},
     "resistance_mechanism": {"batch_key": "resistance_mechanism", "loss_type": "ce"},
     "amr_gene_family": {"batch_key": "amr_gene_family", "loss_type": "ce"},
+    "ta_proximity": {"batch_key": "ta_proximity", "loss_type": "ce"},
 }
 
 
@@ -63,7 +71,9 @@ class AMRDataset(Dataset):
         records: List of CARDRecord from card_parser.load_card_dataset.
         label_vocabularies: Dict returned by card_parser.get_label_vocabularies,
             with keys 'drug_class', 'resistance_mechanism', 'amr_gene_family',
-            each mapping to a sorted list of unique label strings.
+            each mapping to a sorted list of unique label strings. Optionally
+            also 'ta_proximity' (Run 3 only, see TARGET_FIELD_SPECS) -- when
+            absent, __getitem__ simply omits the 'ta_proximity' batch key.
     """
 
     def __init__(
@@ -83,6 +93,15 @@ class AMRDataset(Dataset):
         self._family_to_idx: dict[str, int] = {
             label: idx for idx, label in enumerate(label_vocabularies["amr_gene_family"])
         }
+        # Only built when the caller's label_vocabularies carries a
+        # 'ta_proximity' vocab, i.e. records came from
+        # load_card_dataset(..., ta_proximity_path=...) (Run 3). None for
+        # Run 1/2 and V1, which never reference this field.
+        self._ta_proximity_to_idx: Optional[dict[str, int]] = None
+        if "ta_proximity" in label_vocabularies:
+            self._ta_proximity_to_idx = {
+                label: idx for idx, label in enumerate(label_vocabularies["ta_proximity"])
+            }
 
     def __len__(self) -> int:
         """Return the number of records in the dataset."""
@@ -108,6 +127,9 @@ class AMRDataset(Dataset):
                     amr_gene_family vocabulary.
                 aro_accession (str): ARO accession string, passed through unchanged
                     for traceability and debugging.
+                ta_proximity (torch.LongTensor): Scalar integer index into the
+                    ta_proximity vocabulary (Run 3's conditioning field). Present
+                    only when this dataset was built with a 'ta_proximity' vocab.
         """
         record = self._records[idx]
 
@@ -119,7 +141,7 @@ class AMRDataset(Dataset):
             if dc in self._drug_class_to_idx:
                 drug_class_vec[self._drug_class_to_idx[dc]] = 1.0
 
-        return {
+        item: dict[str, object] = {
             "sequence": record.sequence,
             "drug_class_labels": drug_class_vec,
             "resistance_mechanism": torch.tensor(
@@ -130,6 +152,11 @@ class AMRDataset(Dataset):
             ),
             "aro_accession": record.aro_accession,
         }
+        if self._ta_proximity_to_idx is not None:
+            item["ta_proximity"] = torch.tensor(
+                self._ta_proximity_to_idx[record.ta_proximity_category], dtype=torch.long
+            )
+        return item
 
 
 def split_dataset(

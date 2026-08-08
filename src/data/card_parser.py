@@ -1,6 +1,7 @@
 """Parse CARD FASTA, ARO index, and card.json into CARDRecord objects."""
 
 import csv
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -10,6 +11,13 @@ from typing import Optional
 from Bio import SeqIO
 
 logger = logging.getLogger(__name__)
+
+# Fallback category for any ARO accession absent from a loaded
+# ta_proximity_results.json (e.g. the ~352 accessions with no CARD protein
+# sequence to BLAST in the first place -- see docs/STATUS.md). Matches
+# src/data/ta_proximity.py's `unknown` category: "did not map to RefSeq",
+# a data-quality gap, never a real proximity signal.
+_TA_PROXIMITY_UNKNOWN = "unknown"
 
 # FASTA header format: >gb|<protein_acc>|ARO:<id>|<gene_name> [<organism>]
 # Optional trailing qualifiers (e.g. " Partial") are captured and discarded.
@@ -33,6 +41,15 @@ class CARDRecord:
         resistance_mechanism: CARD resistance mechanism (e.g. 'antibiotic efflux').
         amr_gene_family: AMR gene family grouping (e.g. 'AAC(2\')').
         card_short_name: CARD short name identifier.
+        ta_proximity_category: Run 3's soft-prompt conditioning value (V2
+            TA-Proximity Pipeline Step 4) -- one of 'distance', 'no_ta_locus',
+            or 'unknown', copied verbatim from
+            src/data/ta_proximity.py's TAProximityResult.category (the V2
+            decision, per Andreopoulos, collapsed fine-grained distance bins
+            to this coarse 3-way categorical -- see CLAUDE.md's TA-Proximity
+            Pipeline section). Empty string when load_card_dataset was called
+            without ta_proximity_path (V1 and Run 1/2 callers, which never
+            touch this field).
     """
 
     aro_accession: str
@@ -44,6 +61,7 @@ class CARDRecord:
     resistance_mechanism: str
     amr_gene_family: str
     card_short_name: str
+    ta_proximity_category: str = ""
 
 
 def _parse_fasta_header(description: str) -> dict[str, str]:
@@ -100,10 +118,32 @@ def parse_aro_index(tsv_path: str | Path) -> dict[str, dict[str, str]]:
     return index
 
 
+def _load_ta_proximity_categories(ta_proximity_path: str | Path) -> dict[str, str]:
+    """Load ARO accession -> TA-proximity category from ta_proximity_results.json.
+
+    Args:
+        ta_proximity_path: Path to the JSON list written by
+            scripts/run_ta_proximity.py, e.g.
+            data/processed/ta_proximity_results.json -- each entry a
+            TAProximityResult dict (src/data/ta_proximity.py) with at least
+            'aro_accession' and 'category' keys.
+
+    Returns:
+        Dict mapping ARO accession to its category string ('distance',
+        'no_ta_locus', or 'unknown'). Accessions not present in the file
+        (e.g. never queryable in Step 1) are simply absent from this dict --
+        load_card_dataset falls back to _TA_PROXIMITY_UNKNOWN for those.
+    """
+    with open(ta_proximity_path, encoding="utf-8") as fh:
+        results = json.load(fh)
+    return {entry["aro_accession"]: entry["category"] for entry in results}
+
+
 def load_card_dataset(
     fasta_path: str | Path,
     aro_index_path: str | Path,
     card_json_path: Optional[str | Path] = None,  # TODO: V2 — richer metadata from card.json
+    ta_proximity_path: Optional[str | Path] = None,
 ) -> list[CARDRecord]:
     """Parse CARD FASTA and ARO index into a list of CARDRecord objects.
 
@@ -118,11 +158,21 @@ def load_card_dataset(
         fasta_path: Path to protein_fasta_protein_homolog_model.fasta.
         aro_index_path: Path to aro_index.tsv.
         card_json_path: Optional path to card.json (unused in V1).
+        ta_proximity_path: Optional path to ta_proximity_results.json (V2
+            Run 3 only -- see CLAUDE.md's TA-Proximity Pipeline). When given,
+            each record's ta_proximity_category is joined in by ARO
+            accession, defaulting to 'unknown' for any accession absent from
+            the file. When omitted (V1, Run 1/2), every record's
+            ta_proximity_category stays "" and get_label_vocabularies won't
+            emit a 'ta_proximity' vocabulary.
 
     Returns:
         List of CARDRecord, one per FASTA sequence with metadata joined in.
     """
     aro_index = parse_aro_index(aro_index_path)
+    ta_proximity_by_aro = (
+        _load_ta_proximity_categories(ta_proximity_path) if ta_proximity_path else {}
+    )
 
     records: list[CARDRecord] = []
     skipped = 0
@@ -148,6 +198,14 @@ def load_card_dataset(
         raw_drug_class = row.get("Drug Class", "").strip()
         drug_classes = [d.strip() for d in raw_drug_class.split(";") if d.strip()]
 
+        # Only populated when a caller passed ta_proximity_path (V2 Run 3);
+        # absent accessions default to 'unknown', same data-quality-gap
+        # meaning as a genuine BLAST failure -- both mean "no genomic
+        # coordinate", per CLAUDE.md's TA-Proximity Pipeline vocabulary.
+        ta_proximity_category = (
+            ta_proximity_by_aro.get(aro_acc, _TA_PROXIMITY_UNKNOWN) if ta_proximity_path else ""
+        )
+
         records.append(
             CARDRecord(
                 aro_accession=aro_acc,
@@ -159,6 +217,7 @@ def load_card_dataset(
                 resistance_mechanism=row.get("Resistance Mechanism", "").strip(),
                 amr_gene_family=row.get("AMR Gene Family", "").strip(),
                 card_short_name=row.get("CARD Short Name", "").strip(),
+                ta_proximity_category=ta_proximity_category,
             )
         )
 
@@ -182,11 +241,17 @@ def get_label_vocabularies(records: list[CARDRecord]) -> dict[str, list[str]]:
 
     Returns:
         Dict with keys 'drug_class', 'resistance_mechanism', 'amr_gene_family',
-        each mapping to a sorted list of unique label strings.
+        each mapping to a sorted list of unique label strings. Also includes
+        'ta_proximity' (V2 Run 3's conditioning field) when at least one
+        record was loaded with a non-empty ta_proximity_category, i.e. the
+        caller passed load_card_dataset's ta_proximity_path -- otherwise the
+        key is omitted entirely so Run 1/2 callers never see a spurious
+        one-entry vocabulary.
     """
     drug_classes: set[str] = set()
     mechanisms: set[str] = set()
     families: set[str] = set()
+    ta_proximity_categories: set[str] = set()
 
     for r in records:
         drug_classes.update(r.drug_classes)
@@ -194,9 +259,14 @@ def get_label_vocabularies(records: list[CARDRecord]) -> dict[str, list[str]]:
             mechanisms.add(r.resistance_mechanism)
         if r.amr_gene_family:
             families.add(r.amr_gene_family)
+        if r.ta_proximity_category:
+            ta_proximity_categories.add(r.ta_proximity_category)
 
-    return {
+    vocabularies = {
         "drug_class": sorted(drug_classes),
         "resistance_mechanism": sorted(mechanisms),
         "amr_gene_family": sorted(families),
     }
+    if ta_proximity_categories:
+        vocabularies["ta_proximity"] = sorted(ta_proximity_categories)
+    return vocabularies

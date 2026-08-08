@@ -1,5 +1,6 @@
 """Smoke tests for AMRDataset (src/data/dataset.py)."""
 
+import dataclasses
 from pathlib import Path
 
 import torch
@@ -239,6 +240,55 @@ class TestSingleIndexLabels:
         cbl_mech = dataset[0]["resistance_mechanism"].item()
         erm_mech = dataset[2]["resistance_mechanism"].item()
         assert cbl_mech != erm_mech
+
+
+# ---------------------------------------------------------------------------
+# Tests: ta_proximity conditioning field (Run 3, collapsed 3-way categorical)
+# ---------------------------------------------------------------------------
+
+_TA_PROXIMITY_RECORDS = [
+    dataclasses.replace(_RECORDS[0], ta_proximity_category="distance"),
+    dataclasses.replace(_RECORDS[1], ta_proximity_category="no_ta_locus"),
+    dataclasses.replace(_RECORDS[2], ta_proximity_category="unknown"),
+]
+
+
+@pytest.fixture()
+def ta_proximity_dataset_and_vocabs() -> tuple[AMRDataset, dict[str, list[str]]]:
+    vocabs = get_label_vocabularies(_TA_PROXIMITY_RECORDS)
+    return AMRDataset(_TA_PROXIMITY_RECORDS, vocabs), vocabs
+
+
+class TestTAProximityConditioningField:
+    def test_ta_proximity_absent_when_vocab_not_loaded(self, dataset_and_vocabs):
+        """Run 1/2 datasets (no ta_proximity_category set) must not emit this key."""
+        dataset, _ = dataset_and_vocabs
+        assert "ta_proximity" not in dataset[0]
+
+    def test_ta_proximity_present_when_vocab_loaded(self, ta_proximity_dataset_and_vocabs):
+        dataset, _ = ta_proximity_dataset_and_vocabs
+        for i in range(len(dataset)):
+            assert "ta_proximity" in dataset[i]
+
+    def test_ta_proximity_is_long_scalar(self, ta_proximity_dataset_and_vocabs):
+        dataset, _ = ta_proximity_dataset_and_vocabs
+        for i in range(len(dataset)):
+            t = dataset[i]["ta_proximity"]
+            assert isinstance(t, torch.Tensor)
+            assert t.dtype == torch.long
+            assert t.shape == ()
+
+    def test_ta_proximity_correct_index(self, ta_proximity_dataset_and_vocabs):
+        dataset, vocabs = ta_proximity_dataset_and_vocabs
+        ta_vocab = vocabs["ta_proximity"]
+        for i, record in enumerate(_TA_PROXIMITY_RECORDS):
+            expected = ta_vocab.index(record.ta_proximity_category)
+            actual = dataset[i]["ta_proximity"].item()
+            assert actual == expected
+
+    def test_vocab_is_exactly_the_three_way_categorical(self, ta_proximity_dataset_and_vocabs):
+        _, vocabs = ta_proximity_dataset_and_vocabs
+        assert vocabs["ta_proximity"] == ["distance", "no_ta_locus", "unknown"]
 
 
 # ---------------------------------------------------------------------------

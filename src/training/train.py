@@ -96,8 +96,9 @@ def build_dataloaders(
 
     Args:
         config: Merged config dict from load_config, with a 'paths' section
-            (card_fasta, aro_index, card_json, output_dir) and
-            'training.batch_size'.
+            (card_fasta, aro_index, card_json, output_dir, and optionally
+            ta_proximity_results for Run 3 -- see
+            configs/gpu_task3_genefamily_*.yaml) and 'training.batch_size'.
 
     Returns:
         Same as build_dataloaders_from_records.
@@ -111,6 +112,7 @@ def build_dataloaders(
         config["paths"]["card_fasta"],
         config["paths"]["aro_index"],
         config["paths"].get("card_json"),
+        ta_proximity_path=config["paths"].get("ta_proximity_results"),
     )
     return build_dataloaders_from_records(records, config["training"]["batch_size"])
 

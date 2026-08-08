@@ -1,5 +1,6 @@
 """Smoke tests for the CARD data pipeline (card_parser.py)."""
 
+import json
 import textwrap
 from pathlib import Path
 
@@ -162,6 +163,57 @@ class TestGetLabelVocabularies:
         assert "macrolide antibiotic" in vocabs["drug_class"]
         assert "lincosamide antibiotic" in vocabs["drug_class"]
         assert "streptogramin antibiotic" in vocabs["drug_class"]
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: Run 3 TA-proximity join (load_card_dataset's ta_proximity_path)
+# ---------------------------------------------------------------------------
+
+
+class TestTAProximityJoin:
+    """CLAUDE.md's collapsed 3-way categorical: 'distance' / 'no_ta_locus' /
+    'unknown', joined by ARO accession from a ta_proximity_results.json-shaped
+    file. ARO:3000600 is deliberately omitted from the fixture file to
+    exercise the 'unknown' fallback for accessions absent from the file
+    (e.g. never queryable in BLAST Step 1)."""
+
+    @pytest.fixture()
+    def dataset_with_ta_proximity(self, tmp_path: Path) -> list[CARDRecord]:
+        fasta_file = tmp_path / "test.fasta"
+        tsv_file = tmp_path / "test_aro_index.tsv"
+        ta_proximity_file = tmp_path / "ta_proximity_results.json"
+        fasta_file.write_text(MINIMAL_FASTA)
+        tsv_file.write_text(MINIMAL_ARO_TSV)
+        ta_proximity_file.write_text(
+            json.dumps(
+                [
+                    {"aro_accession": "ARO:3002999", "category": "distance", "distance_bp": 523},
+                    {"aro_accession": "ARO:3002524", "category": "no_ta_locus", "distance_bp": None},
+                    # ARO:3000600 intentionally absent -- must default to 'unknown'.
+                ]
+            )
+        )
+        return load_card_dataset(fasta_file, tsv_file, ta_proximity_path=ta_proximity_file)
+
+    def test_category_joined_by_aro_accession(self, dataset_with_ta_proximity):
+        by_aro = {r.aro_accession: r.ta_proximity_category for r in dataset_with_ta_proximity}
+        assert by_aro["ARO:3002999"] == "distance"
+        assert by_aro["ARO:3002524"] == "no_ta_locus"
+
+    def test_accession_absent_from_file_defaults_to_unknown(self, dataset_with_ta_proximity):
+        by_aro = {r.aro_accession: r.ta_proximity_category for r in dataset_with_ta_proximity}
+        assert by_aro["ARO:3000600"] == "unknown"
+
+    def test_category_empty_when_no_ta_proximity_path(self, minimal_dataset):
+        assert all(r.ta_proximity_category == "" for r in minimal_dataset)
+
+    def test_vocab_present_only_when_ta_proximity_loaded(self, dataset_with_ta_proximity, minimal_dataset):
+        assert "ta_proximity" in get_label_vocabularies(dataset_with_ta_proximity)
+        assert "ta_proximity" not in get_label_vocabularies(minimal_dataset)
+
+    def test_vocab_is_exactly_the_three_way_categorical(self, dataset_with_ta_proximity):
+        vocabs = get_label_vocabularies(dataset_with_ta_proximity)
+        assert vocabs["ta_proximity"] == ["distance", "no_ta_locus", "unknown"]
 
 
 # ---------------------------------------------------------------------------

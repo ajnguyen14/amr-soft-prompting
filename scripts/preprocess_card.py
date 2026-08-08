@@ -36,7 +36,9 @@ def preprocess(config: dict[str, Any]) -> Path:
 
     Args:
         config: Merged config dict from load_config, with a 'paths' section
-            (card_fasta, aro_index, card_json, output_dir).
+            (card_fasta, aro_index, card_json, output_dir, and optionally
+            ta_proximity_results for Run 3 -- see
+            configs/gpu_task3_genefamily_*.yaml).
 
     Returns:
         Path to the written artifact file.
@@ -45,6 +47,7 @@ def preprocess(config: dict[str, Any]) -> Path:
         config["paths"]["card_fasta"],
         config["paths"]["aro_index"],
         config["paths"].get("card_json"),
+        ta_proximity_path=config["paths"].get("ta_proximity_results"),
     )
     label_vocabularies = get_label_vocabularies(records)
     splits = split_dataset(records, seed=SEED)

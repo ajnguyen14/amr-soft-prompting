@@ -153,17 +153,36 @@ used only as Run 3's soft-prompt conditioning input (see table above).
    existing pattern for `mechanism`/`drug_class` — do NOT use a raw or
    log-scaled continuous scalar projection; a single linear direction can't
    represent proximity's nonlinear relevance and forces missing-value
-   sentinels onto the same axis as real distances). Vocabulary:
-   - `unknown` — ARO accession did not map to RefSeq (Step 1 failed).
+   sentinels onto the same axis as real distances).
+
+   **Decision (2026-08-07, per Andreopoulos, resolving the sparse-signal
+   blocker):** the fixed-code pipeline rerun found only 19/6052 queryable
+   ARO accessions (0.31%) with a real same-replicon distance — too sparse to
+   bin meaningfully (see `docs/STATUS.md` for the full histogram and
+   coverage numbers). Fine-grained distance bins are dropped entirely.
+   Vocabulary is the **coarse 3-way categorical** below — a straight
+   passthrough of `src/data/ta_proximity.py`'s `TAProximityResult.category`,
+   with no separate binning step:
+   - `unknown` — ARO accession did not map to RefSeq (Step 1 failed, or the
+     accession had no CARD protein sequence to BLAST in the first place).
      This is a **data-quality gap**, not a biological signal — never encode
      it as a distance value.
    - `no_ta_locus` — mapped successfully, but no TA locus exists on that
      replicon. This **is** a real biological signal, distinct from
      `unknown` — do not conflate the two, and do not encode as a large
      distance number.
-   - One embedding entry per **distance bin** for real same-replicon
-     distances. Bin edges are not yet finalized — set them from the actual
-     distance histogram once Steps 1–3 are run, not chosen a priori.
+   - `distance` — mapped successfully and a same-replicon TA locus exists.
+     The actual bp value is *not* encoded (dropped along with fine-grained
+     bins) — this category alone is the signal now.
+
+   Implementation: `card_parser.load_card_dataset`'s `ta_proximity_path`
+   parameter joins `data/processed/ta_proximity_results.json` onto each
+   `CARDRecord.ta_proximity_category` by ARO accession (defaulting absent
+   accessions to `unknown`); `dataset.TARGET_FIELD_SPECS['ta_proximity']`
+   routes it through `AMRDataset` as a single-label categorical, the same
+   way `amr_gene_family` conditions Runs 1/2 via
+   `SingleFieldSoftPrompt`/`nn.Embedding(3, embed_dim)`. Configs:
+   `configs/gpu_task3_genefamily_{internal,external}.yaml`.
 
 ---
 

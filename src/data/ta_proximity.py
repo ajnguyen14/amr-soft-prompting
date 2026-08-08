@@ -14,12 +14,22 @@ Categorizes every CARD ARO accession into exactly one of:
   - 'unknown' -- BLAST mapping failed entirely (Step 1), a data-quality gap,
     never conflated with 'no_ta_locus'
 
-The categorical bin-edge embedding vocabulary (Step 4) is deliberately not
-built here -- CLAUDE.md requires bin edges to be set from the actual
-distance histogram once Steps 1-3 have run on the full dataset, not chosen
-a priori. This module only produces the raw per-ARO distance/category
-values; binning them into an nn.Embedding vocabulary is a follow-up once the
-full BLAST job's real hits are available.
+Step 4 (the categorical embedding vocabulary fed to
+src.models.soft_prompt.SingleFieldSoftPrompt) was originally scoped as
+fine-grained distance bins, with bin edges to be set from the real distance
+histogram once Steps 1-3 had run on the full dataset. That rerun (see
+docs/STATUS.md) found only 19/6052 queryable accessions (0.31%) with a real
+same-replicon distance -- too sparse to bin meaningfully. Per Andreopoulos's
+decision, Run 3 instead collapses to the coarse 3-way categorical this
+module already produces (`distance` / `no_ta_locus` / `unknown`), skipping
+fine-grained bins entirely. This module's category strings are consumed
+verbatim as the embedding vocabulary -- see
+card_parser.load_card_dataset's ta_proximity_path parameter, which joins
+this module's output (as serialized by scripts/run_ta_proximity.py to
+data/processed/ta_proximity_results.json) onto CARDRecord.ta_proximity_category
+by ARO accession, and dataset.TARGET_FIELD_SPECS['ta_proximity'], which
+routes it to AMRDataset's 'ta_proximity' batch key as a single-label
+categorical index. No separate binning step exists.
 """
 
 import logging

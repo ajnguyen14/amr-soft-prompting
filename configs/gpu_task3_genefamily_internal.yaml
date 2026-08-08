@@ -1,0 +1,46 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  # Run 3-only: joined onto CARDRecord.ta_proximity_category by ARO accession
+  # (card_parser.load_card_dataset's ta_proximity_path). Produced by
+  # scripts/run_ta_proximity.py per configs/ta_proximity_refseq.yaml.
+  ta_proximity_results: "/data/aidannguyen/amr-soft-prompting/data/processed/ta_proximity_results.json"
+  # Separate output_dir per run so none of the 6 V2 single-head ablations
+  # (see CLAUDE.md's Single-Head Architecture table) ever overwrite each
+  # other's checkpoint.
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/task3_genefamily_internal/"
+
+model:
+  esm2_variant: "facebook/esm2_t33_650M_UR50D"
+  device: "cuda"
+  # Along with output_dir and logging.wandb_run_name, the only fields that
+  # differ from gpu_task3_genefamily_external.yaml -- same internal/external
+  # parity rule as V1.
+  injection_mode: "internal"
+
+training:
+  # Confirmed RTX 3090 ceiling (CLAUDE.md's Model Variants note). Bump to 32
+  # if this run is instead launched on spark-833c (DGX Spark).
+  batch_size: 24
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"
+
+task:
+  # Run 3 (CLAUDE.md's Single-Head Architecture table): condition the soft
+  # prompt on ta_proximity, predict amr_gene_family. ta_proximity is the
+  # collapsed 3-way categorical ('distance' / 'no_ta_locus' / 'unknown') per
+  # the sparse-signal decision in CLAUDE.md's TA-Proximity Pipeline section
+  # -- TARGET_FIELD_SPECS routes it to a single-label SingleFieldSoftPrompt
+  # (nn.Embedding(3, embed_dim)) the same way amr_gene_family conditions
+  # Runs 1/2.
+  conditioning_field: "ta_proximity"
+  target_field: "amr_gene_family"
+
+loss:
+  weight: 1.0
+
+logging:
+  wandb_project: "amr-soft-prompting"
+  wandb_run_name: "v2-task3-genefamily-internal"

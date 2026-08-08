@@ -6,6 +6,7 @@ touches the real CARD dataset or the 650M model -- that's a GPU-server-only
 training run, out of scope for a CPU smoke test.
 """
 
+import json
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ import pytest
 import torch
 
 from src.training.train import (
+    build_dataloaders,
     build_dataloaders_from_records,
     build_models,
     build_optimizer,
@@ -99,18 +101,48 @@ def _make_v2_config(
     injection_mode: str,
     conditioning_field: str,
     target_field: str,
+    ta_proximity_results_path: Path | None = None,
 ) -> dict[str, Any]:
     """Small synthetic V2 config: 8M model, CPU, tiny classifier, 1 epoch."""
     config = _make_config(fasta_path, aro_index_path, output_dir, injection_mode)
+    if ta_proximity_results_path is not None:
+        config["paths"]["ta_proximity_results"] = str(ta_proximity_results_path)
     config["loss"] = {"weight": 1.0}
     config["task"] = {"conditioning_field": conditioning_field, "target_field": target_field}
     return config
+
+
+def _make_ta_proximity_file(tmp_path: Path, aro_accessions: list[str]) -> Path:
+    """Write a ta_proximity_results.json-shaped fixture (Run 3's conditioning input).
+
+    Cycles deterministically through the 3-way collapsed categorical so every
+    category is exercised in a small fixture, mirroring the real
+    scripts/run_ta_proximity.py output shape (a list of dicts with at least
+    'aro_accession' and 'category').
+    """
+    categories = ["distance", "no_ta_locus", "unknown"]
+    entries = [
+        {"aro_accession": aro, "category": categories[i % 3], "distance_bp": None}
+        for i, aro in enumerate(aro_accessions)
+    ]
+    path = tmp_path / "ta_proximity_results.json"
+    path.write_text(json.dumps(entries))
+    return path
 
 
 @pytest.fixture(scope="module")
 def card_files(tmp_path_factory) -> tuple[Path, Path]:
     tmp_path = tmp_path_factory.mktemp("card_data")
     return _make_card_files(tmp_path)
+
+
+@pytest.fixture(scope="module")
+def ta_proximity_file(card_files, tmp_path_factory) -> Path:
+    """ta_proximity_results.json fixture covering every ARO accession in card_files."""
+    fasta_path, aro_index_path = card_files
+    records = load_card_dataset(fasta_path, aro_index_path)
+    tmp_path = tmp_path_factory.mktemp("ta_proximity_data")
+    return _make_ta_proximity_file(tmp_path, [r.aro_accession for r in records])
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +321,29 @@ class TestBuildV2Models:
         with pytest.raises(ValueError, match="multi-label"):
             build_v2_models(config, label_vocabularies, "cpu")
 
+    def test_ta_proximity_conditioning_wires_correct_shapes(self, card_files, ta_proximity_file):
+        """conditioning_field='ta_proximity', target_field='amr_gene_family' (Run 3 shape).
+
+        ta_proximity is the collapsed 3-way categorical (CLAUDE.md's
+        sparse-signal decision) -- SingleFieldSoftPrompt's embedding table
+        must have exactly 3 rows, one per category.
+        """
+        fasta_path, aro_index_path = card_files
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "ta_proximity", "amr_gene_family",
+            ta_proximity_results_path=ta_proximity_file,
+        )
+        _, _, _, label_vocabularies = build_dataloaders(config)
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+
+        assert label_vocabularies["ta_proximity"] == ["distance", "no_ta_locus", "unknown"]
+        assert soft_prompt.embedding.num_embeddings == 3
+        assert classifier.head.out_features == len(label_vocabularies["amr_gene_family"])
+        assert classifier.target_name == "amr_gene_family"
+        assert loss_fn.loss_type == "ce"
+        assert loss_fn.batch_key == "amr_gene_family"
+
 
 # ---------------------------------------------------------------------------
 # run_v2_epoch
@@ -363,16 +418,21 @@ class TestTrainV2Integration:
         [
             ("amr_gene_family", "resistance_mechanism"),  # Run 2 shape, loss_type='ce'
             ("amr_gene_family", "drug_class"),  # Run 1 shape, loss_type='bce'
+            ("ta_proximity", "amr_gene_family"),  # Run 3 shape, collapsed 3-way categorical
         ],
     )
     def test_train_v2_runs_and_writes_checkpoint(
-        self, card_files, tmp_path, monkeypatch, conditioning_field, target_field
+        self, card_files, ta_proximity_file, tmp_path, monkeypatch, conditioning_field, target_field
     ):
         monkeypatch.setenv("WANDB_MODE", "disabled")
         fasta_path, aro_index_path = card_files
-        output_dir = tmp_path / f"outputs_v2_{target_field}"
+        output_dir = tmp_path / f"outputs_v2_{target_field}_{conditioning_field}"
+        ta_proximity_results_path = (
+            ta_proximity_file if conditioning_field == "ta_proximity" else None
+        )
         config = _make_v2_config(
-            fasta_path, aro_index_path, output_dir, "internal", conditioning_field, target_field
+            fasta_path, aro_index_path, output_dir, "internal", conditioning_field, target_field,
+            ta_proximity_results_path=ta_proximity_results_path,
         )
 
         train_v2(config)
