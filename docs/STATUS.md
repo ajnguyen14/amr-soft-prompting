@@ -1,221 +1,138 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-08-07 15:47_
+_Last updated: 2026-08-23 10:25_
 
 ## Current Version
 
-**V2 — Single-Head Retargeting + TA-Proximity Conditioning.** Run 3's
-sparse-signal blocker is now resolved: Aidan decided (rather than waiting
-for a synchronous reply from Andreopoulos, given the poster deadline) to
-collapse TA-proximity to the coarse 3-way categorical (`distance` /
-`no_ta_locus` / `unknown`), option (1) from the three previously on the
-table. All three V2 runs are now code-complete and config-complete.
+**V2 — Single-Head Retargeting + TA-Proximity Conditioning: training complete
+per the finalized poster.** `docs/poster/poster.pdf` (finalized 2026-08-12)
+reports finished results for all 6 single-head ablations (drug_class /
+resistance_mechanism / amr_gene_family, each internal + external). No code
+commits since `4ddb15d` (2026-08-08) — the codebase has been frozen while
+the poster was assembled, and the project is now moving into handoff, not
+active development. V1 unchanged from prior status (functionally complete).
+V3 not started.
 
-- **Runs 1 & 2 (drug_class / resistance_mechanism, both conditioned on
-  amr_gene_family): code-complete. Run 1 external is still training**
-  (on `spark-833c`, started 02:32, still active as of this update); the
-  other 3 Run 1/2 jobs not yet launched.
-- **Run 3 (TA-proximity → amr_gene_family): unblocked and code-complete.**
-  Step 4 no longer needs the (indefinitely blocked) distance-histogram bin
-  edges — it's now a direct passthrough of Step 3's existing 3-way category.
-  `configs/gpu_task3_genefamily_{internal,external}.yaml` written and
-  load-verified; the full `train_v2` loop (build_v2_models → run_v2_epoch →
-  checkpoint) has been exercised end-to-end on the 8M smoke model. **Not
-  yet launched on GPU** — see What's Not Started.
+**Important gap for the handoff (see Open Questions below): this repo copy's
+local `outputs/` and `wandb/` only contain artifacts for 2 of the 6 V2 runs**
+(Run 1 external, Run 2 external). The other 4 runs' numbers appear in the
+poster but have no local checkpoint or wandb cache on this machine
+(`spark-833c`) — they ran on one of the other two GPU servers (`sjsu` or the
+third RTX 3090 box, per CLAUDE.md's 3-server setup), and **that server has
+since gone offline**, so those checkpoints/logs are currently unreachable —
+not just uncopied. Confirmed by Aidan (2026-08-23).
 
 ## Completion
 
-**V1: unchanged, functionally complete** (both ablation checkpoints trained
-and evaluated). **V2 single-head restructuring (Runs 1/2): ~92%** — all
-code, tests, and configs are done; Run 1 external is launched and training,
-the other 3 jobs still need to be started. **V2 Run 3 (TA-proximity
-conditioning): ~95%** — data layer, categorical join, configs, and training
-wiring all done and tested; only the actual GPU launch (both ablations)
-remains, same as the other 3 not-yet-launched Run 1/2 jobs.
+**V1: 100%, unchanged** (both ablation checkpoints trained and evaluated —
+`i7o4eg5n` internal / `2rr2h1f9` external, 0.9087 / 0.9054 val gene-family
+accuracy). **V2 code/config: 100%.** **V2 training: 6/6 runs complete
+per the poster's reported numbers**, but **locally archived: 2/6** (see gap
+above) — this repo directory does not currently hold reproducible artifacts
+(checkpoint + eval) for Run 1 internal, Run 2 internal, or either Run 3
+ablation.
 
 ## What's Working
 
 - Everything from V1 (unchanged): `card_parser.py`, `dataset.py`,
   `esm2_wrapper.py`, `SoftPromptModule`, `ClassifierHead`, `AMRLoss`,
-  `preprocess_card.py`, `run_training.py`, `load_config`, both retrained V1
-  ablation checkpoints (`i7o4eg5n` internal / `2rr2h1f9` external, 0.9087 /
-  0.9054 val gene-family accuracy).
-- **V2 single-head architecture, built generically for Runs 1-3.** New
-  classes added *alongside* (not replacing) their V1 counterparts,
-  specifically so the two existing V1 checkpoints' state_dicts stay
-  loadable:
-  - `SingleFieldSoftPrompt` (`src/models/soft_prompt.py`) — 1-token
-    categorical embedding for any single conditioning field.
-  - `SingleTargetClassifierHead` (`src/models/classifier.py`) — shared-trunk
-    MLP with a configurable `target_name`/`num_classes` head.
-  - `SingleTargetLoss` (`src/training/loss.py`) — dispatches to
-    `BCEWithLogitsLoss` ('bce', Run 1's multi-label drug_class) or
-    `CrossEntropyLoss` ('ce', Run 2/3's single-label targets).
-  - `compute_single_target_metrics` (`src/eval/metrics.py`) — argmax
-    accuracy for 'ce' targets; 0.5-thresholded subset accuracy + micro-F1 for
-    'bce' targets (plain accuracy isn't well-defined for multi-label).
-  - `TARGET_FIELD_SPECS` (`src/data/dataset.py`) — single source of truth
-    mapping each label field to its `AMRDataset` batch key and loss type,
-    shared by train.py, evaluate.py, and metrics.py so the three can't drift
-    on this mapping. Now includes `'ta_proximity'` (Run 3's conditioning
-    field, `'ce'`, batch key `'ta_proximity'`).
-- **`build_v2_models`/`run_v2_epoch`/`train_v2` (`src/training/train.py`)**
-  wired into `train.py main()`, dispatching on the presence of a `task`
-  config section (else falls back to the untouched V1 `train()`). Confirmed
-  generic enough that Run 3 required **zero changes** to this module — only
-  the data layer (below) needed new code.
-- **V2 eval path (`src/eval/evaluate.py`)**: `collect_predictions_v2`,
-  `evaluate_single_label_target`, `evaluate_multi_label_target`, same
-  `main()` dispatch pattern.
-- **6 V2 configs, all load-verified**, parity rule followed (internal/
-  external identical except `injection_mode`/`output_dir`/`wandb_run_name`),
-  `batch_size: 24` (confirmed RTX 3090 ceiling, with a comment to bump to 32
-  on `spark-833c`):
-  - `gpu_task1_drugclass_{internal,external}.yaml`,
-    `gpu_task2_mechanism_{internal,external}.yaml` (unchanged).
-  - **New this session:** `gpu_task3_genefamily_{internal,external}.yaml`
-    (`conditioning_field: ta_proximity`, `target_field: amr_gene_family`),
-    with `paths.ta_proximity_results` pointing at
-    `data/processed/ta_proximity_results.json`.
-- **Run 3's TA-proximity data layer, newly wired this session:**
-  - `CARDRecord.ta_proximity_category` (`src/data/card_parser.py`) — new
-    field, default `""`. Populated only when `load_card_dataset` is called
-    with the new `ta_proximity_path` argument, which joins
-    `ta_proximity_results.json` onto records by ARO accession (missing
-    accessions default to `'unknown'`).
-  - `get_label_vocabularies` emits a `'ta_proximity'` vocab (exactly
-    `['distance', 'no_ta_locus', 'unknown']`, sorted) only when at least one
-    loaded record has a non-empty category — Run 1/2 callers (no
-    `ta_proximity_path`) never see this key, so `AMRDataset` correctly omits
-    the `'ta_proximity'` batch key for them too.
-  - `AMRDataset` (`src/data/dataset.py`) conditionally builds
-    `_ta_proximity_to_idx` and emits a `'ta_proximity'` long-scalar tensor
-    key exactly when that vocab is present.
-  - `scripts/preprocess_card.py` and `src/training/train.py`'s
-    `build_dataloaders` both thread `paths.ta_proximity_results` through to
-    `load_card_dataset` automatically — no separate Run-3-only code path.
-  - **Validated against the real, full CARD + TA-proximity data on
-    `spark-833c`**: loading all 6052 records with `ta_proximity_path` set
-    reproduces the exact category counts from the fixed-code pipeline rerun
-    (19 `distance`, 1933 `no_ta_locus`, 4100 `unknown`) — confirms the join
-    logic and the reported numbers agree.
-- **Full smoke suite: 253/253 passing** (was 241; +12 new tests for the
-  TA-proximity join, `AMRDataset`'s `ta_proximity` key, `build_v2_models`
-  with `conditioning_field='ta_proximity'`, and a full `train_v2` integration
-  run for the Run 3 shape). No regressions to the V1 or Run 1/2 paths.
-- **All 9 TA-proximity pipeline code-review findings fixed (commit
-  `9bba25d`, prior session):**
-  - *Critical (result integrity):*
-    1. Reported `unknown` rate no longer conflates "never BLASTed" (352
-       accessions with no FASTA sequence) with "BLAST genuinely failed" —
-       `run_blast_coordinate_mapping.py` now writes the exact query universe
-       it attempted (`blast_query_universe.json`) and `run_ta_proximity.py`
-       reads that instead of recomputing it independently, eliminating both
-       the miscategorization and the duplicate recomputation between the two
-       scripts.
-    2. `refseq_fetch.py` genome writes are now validated (non-empty FASTA)
-       and atomic (temp file + `os.replace`) — a truncated/error response
-       can no longer be permanently cached as a valid fetch.
-    3. `used_own_accession` (the substitution-genome bias flag, affecting
-       83% of entries) now flows through `BlastHit` → `TAProximityResult`
-       instead of being computed and discarded, so downstream results can be
-       audited for this bias.
-  - *Reproducibility:*
-    4. BLAST best-hit tie-break is now deterministic (bitscore, then a
-       stable coordinate key) instead of relying on subprocess output order.
-    5. ARO accessions mapping to >1 taxonomy_id now raise loudly instead of
-       silently picking one arbitrarily.
-  - *Hygiene:*
-    6. `card_tadb_matcher.py` docstrings now state it's superseded/not part
-       of the live pipeline.
-    7. Per-group error handling + incremental checkpointing to
-       `blast_hits_output` — one bad representative genome no longer aborts
-       the whole ~738-group run.
-    8. E-value threshold is now config-driven (`configs/ta_proximity_refseq.yaml`)
-       instead of a bare literal.
-- **TA-proximity pipeline (Steps 1 and 3) rerun end-to-end on `spark-833c`
-  with the fixed code** (prior session), producing corrected, trustworthy
-  numbers that this session's real-data validation (above) reproduced
-  exactly:
-  - Query universe (Step 1): 6052 ARO accessions queryable (had a CARD
-    protein sequence to BLAST) across 676 representative groups; 352
-    excluded up front as a **data-quality gap**, not folded into `unknown`.
-  - BLAST coverage (Step 1): 1952/6052 accessions got a genomic-coordinate
-    hit (32.3%).
-  - Categorization (Step 3 / now also Run 3's Step 4 vocabulary directly),
-    all as a fraction of the 6052-accession queryable universe:
-    - `distance` (real same-replicon bp value, category kept, bp value
-      dropped): **19 (0.31%)**.
-    - `no_ta_locus` (mapped successfully, no TA locus on that replicon):
-      1933 (31.9%).
-    - `unknown` (genuine BLAST failure): 4100 (67.7%).
-  - Distance histogram (bp), n=19: min=523, max=854495, p10=1717, p25=15818,
-    p50=92656, p75=432500, p90=765686. No longer load-bearing for Step 4
-    (fine-grained bins were dropped), kept here for reference only.
+  `preprocess_card.py`, `run_training.py`, `load_config`.
+- Full V2 single-head architecture (`SingleFieldSoftPrompt`,
+  `SingleTargetClassifierHead`, `SingleTargetLoss`,
+  `compute_single_target_metrics`, `TARGET_FIELD_SPECS`, `build_v2_models`/
+  `run_v2_epoch`/`train_v2`, V2 eval path) — unchanged since last session,
+  confirmed generic enough to have supported all 3 tasks without further
+  changes.
+- All 6 V2 configs (`gpu_task{1,2,3}_{genefamily,drugclass,mechanism}_
+  {internal,external}.yaml`), parity rule followed.
+- TA-proximity data layer (`CARDRecord.ta_proximity_category`, the
+  `'ta_proximity'` `TARGET_FIELD_SPECS` entry, conditional `AMRDataset`
+  batch key) — validated against the real, full CARD + TA-proximity data.
+- **Full smoke suite: 253/253 passing**, reconfirmed this session on
+  `spark-833c`. No regressions.
+- **Locally-verified V2 results (this machine's `outputs/`/`wandb/`):**
+  - Run 1 external (`v2-task1-drugclass-external`, `wandb` run
+    `p9f8pdmn`, 50 epochs): drug_class subset accuracy 92.3%, micro-F1
+    94.2%. Checkpoint: `outputs/task1_drugclass_external/best_model.pt`.
+  - Run 2 external (`v2-task2-mechanism-external`, `wandb` run
+    `oe13u15r`, 50 epochs): resistance_mechanism accuracy 99.5%.
+    Checkpoint: `outputs/task2_mechanism_external/best_model.pt`.
+- **Poster-reported V2 results (not locally archived — see gap above):**
+  - Drug class: internal 85.4% / external 92.3% (external matches local).
+  - Mechanism: internal 99.5% / external 99.5% (external matches local).
+  - Gene family (← TA-proximity): internal 90.9% / external 86.5%, vs.
+    an 18.8% naive-lookup baseline (the ~72pp gap the poster's conclusion
+    is built on).
+  - TA-proximity conditioning composition: 67.7% unknown, 31.9%
+    no_ta_locus, 0.3% distance (n=19) — matches the pipeline numbers
+    already recorded here from the prior session.
+- **Poster finalized**: `docs/poster/poster.pdf` + `poster.md` + 9 figures
+  (2026-08-12). Full results writeup, all 3 tasks × both injection modes,
+  label-leakage confound explainer, TA-proximity coverage-gap discussion.
+  Untracked in git — repo handoff is happening as a raw folder copy via
+  Google Drive, not a git clone, so this was left uncommitted by choice.
+- `notebooks/exploration/poster_figures.ipynb` — generated the poster
+  figures. Also untracked, same reasoning.
 
 ## What's In Progress
 
-- **Run 1 external training** (`configs/gpu_task1_drugclass_external.yaml`)
-  is running on `spark-833c` (started 02:32, still active as of this
-  update).
+Nothing actively running. No commits or wandb activity since 2026-08-08;
+the project has been dormant since the poster was finalized on 2026-08-12
+while moving toward handoff.
 
 ## What's Not Started
 
-1. **Launching all 4 remaining V2 GPU jobs**: Run 1 internal, both Run 2
-   jobs, and both Run 3 jobs (`gpu_task3_genefamily_{internal,external}.yaml`)
-   — 1 of 6 total V2 single-head ablations now running, 5 remain. Run 3's
-   configs are new this session and have not yet been launched or had a
-   preprocessed split artifact generated (training will fall back to
-   parsing CARD directly on first launch, same as Run 1/2 did).
-2. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged).
+1. **Recovering the 4 missing V2 run artifacts** (Run 1 internal, Run 2
+   internal, Run 3 internal, Run 3 external) — blocked on the GPU server
+   they ran on being offline; wandb.ai cloud is the only other lead. See
+   Open Questions.
+2. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged,
+   kept intentionally per CLAUDE.md's documented project structure).
+3. V3 (KEGG/KofamKOALA, RAG) — not started, not scoped in detail.
 
 ## Open Questions / Blockers
 
-- **Former TOP BLOCKER resolved:** Run 3's TA-proximity signal was too
-  sparse (19/6052, 0.31%) for fine-grained distance bins. Resolved this
-  session by collapsing to the coarse 3-way categorical
-  (`distance`/`no_ta_locus`/`unknown`) — option (1) of the three previously
-  on the table (see CLAUDE.md's TA-Proximity Pipeline section for the
-  updated spec). Options (2) (expand TADB scope) and (3) (drop TA-proximity
-  entirely) were not pursued. Aidan made this call directly rather than
-  waiting on a synchronous reply from Andreopoulos, given the poster
-  deadline — worth flagging to him after the fact since it's a real scope
-  decision, not just an implementation detail.
-- **GPU allocation for the remaining 5 V2 jobs not yet decided.** Need to
-  check free GPU state on `spark-833c` (currently running Run 1 external
-  plus several `ollama` processes consuming GPU memory), `sjsu`, and the
-  third RTX 3090 box before launching more.
+- **Local artifact gap, currently unrecoverable (confirmed by Aidan,
+  2026-08-23):** the poster reports finished numbers for all 6 V2
+  ablations, but this repo directory only has checkpoints/wandb cache for
+  2 of them (both external-injection runs). The other 4 ran on a different
+  GPU server, and **that server has since gone offline** — so
+  `outputs/task1_drugclass_internal/`, `outputs/task2_mechanism_internal/`,
+  and both `outputs/task3_genefamily_{internal,external}/` cannot currently
+  be pulled from it. The one remaining path to recover them is wandb.ai
+  cloud (project `amr-soft-prompting`) — check whether those 4 runs synced
+  there before the server went down; if not, the poster's numbers for
+  those 4 tasks currently have no retrievable underlying checkpoint. Worth
+  flagging to Andreopoulos/whoever inherits this if reproducing those
+  specific results matters going forward — this isn't blocking the Drive
+  handoff itself, just something the recipient should know is missing.
+- GPU allocation / server state for the other two machines wasn't checked
+  this session (no jobs were launched) — not urgent since nothing is
+  currently queued.
 - Organism-dedup substitution rate (83%) and TADB Type I/III-VIII expansion
-  are unchanged/still open, not repeated in detail here. One lower-severity
-  (non-critical) code-review finding remains open: no BLAST-DB
-  skip-if-exists (DBs are rebuilt from scratch on every rerun) — everything
-  else from that review is fixed (see What's Working). Neither affects
-  Run 3's now-collapsed categorical, since it no longer depends on precise
-  bp distances.
+  remain open, unchanged from before. One lower-severity code-review finding
+  remains open: no BLAST-DB skip-if-exists.
 
 ## Recent Changes
 
-1. **Resolved Run 3's sparse-signal blocker by collapsing TA-proximity to a
-   coarse 3-way categorical** (`distance`/`no_ta_locus`/`unknown`), per
-   Aidan's decision this session. Updated CLAUDE.md's TA-Proximity Pipeline
-   Step 4 to document the collapse and drop the now-moot distance-bin plan.
-2. **Wired Run 3's conditioning field end-to-end**: `CARDRecord
-   .ta_proximity_category` + `load_card_dataset(..., ta_proximity_path=...)`
-   (`src/data/card_parser.py`), a `'ta_proximity'` entry in
-   `TARGET_FIELD_SPECS` and conditional `AMRDataset` batch key
-   (`src/data/dataset.py`), and threading `paths.ta_proximity_results`
-   through `scripts/preprocess_card.py` and `train.py`'s
-   `build_dataloaders`. `build_v2_models`/`run_v2_epoch`/`train_v2` needed
-   no changes — confirms they were built generically enough for all 3 runs,
-   as originally intended.
-3. **Wrote and load-verified `configs/gpu_task3_genefamily_
-   {internal,external}.yaml`** — same parity rule as the other 4 V2 configs.
-4. **Added 12 smoke tests** covering the TA-proximity join, `AMRDataset`'s
-   conditional `ta_proximity` key, `build_v2_models` with
-   `conditioning_field='ta_proximity'`, and a full `train_v2` run for the
-   Run 3 shape (253/253 total passing, up from 241).
-5. **Validated the join against the real, full CARD + TA-proximity data**
-   on `spark-833c` — reproduces the exact 19/1933/4100 category counts from
-   the earlier pipeline rerun.
-6. Previous session: fixed all 9 TA-proximity pipeline code-review findings,
-   reran Steps 1 and 3 with the fixed code, and launched Run 1 external
-   (`gpu_task1_drugclass_external.yaml`) on `spark-833c`.
+1. **Poster finalized** (`docs/poster/poster.pdf`, 2026-08-12) — full
+   results writeup for all 3 V2 tasks across both injection modes, plus
+   the label-leakage confound and TA-proximity coverage-gap explainers.
+2. **No code changes since `4ddb15d`** (2026-08-08, "collapse Run 3
+   TA-proximity to 3-way categorical and wire end-to-end") — codebase has
+   been frozen since then; this session's changes are handoff prep only.
+3. **Repo cleanup for Google Drive handoff** (this session): removed
+   `__pycache__`/`.pytest_cache`, a duplicate copy of the poster figures
+   under `outputs/poster_figures/` (byte-identical to
+   `docs/poster/figures/`), and transient `wait_and_run.sh`/memory-watch
+   state files (`outputs/.internal_launched`, `.memory_watch_state`,
+   `memory_watch.log`, `internal_run.out`). Kept `data/raw/` (BLAST DB +
+   RefSeq, 788M), `wandb/` local cache, and all `outputs/` checkpoints —
+   Aidan wants these included in the Drive upload as-is.
+4. **`docs/poster/` and `notebooks/` intentionally left untracked in git**
+   — the handoff is a raw folder copy via Google Drive, not a git clone,
+   so committing them wasn't necessary. Same reasoning applied to the
+   uncommitted `requirements.txt` addition (`jupyter`, `ipykernel`,
+   `nbconvert`, `nbformat` — needed for the poster-figures notebook).
+5. **Discovered the local-artifact gap** (see Open Questions) while
+   reconciling this repo's `outputs/`/`wandb/` against the poster's
+   reported numbers.
