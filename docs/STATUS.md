@@ -1,5 +1,5 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-08-23 10:25_
+_Last updated: 2026-08-24 19:34_
 
 ## Current Version
 
@@ -12,24 +12,31 @@ the poster was assembled, and the project is now moving into handoff, not
 active development. V1 unchanged from prior status (functionally complete).
 V3 not started.
 
-**Important gap for the handoff (see Open Questions below): this repo copy's
-local `outputs/` and `wandb/` only contain artifacts for 2 of the 6 V2 runs**
-(Run 1 external, Run 2 external). The other 4 runs' numbers appear in the
-poster but have no local checkpoint or wandb cache on this machine
-(`spark-833c`) — they ran on one of the other two GPU servers (`sjsu` or the
-third RTX 3090 box, per CLAUDE.md's 3-server setup), and **that server has
-since gone offline**, so those checkpoints/logs are currently unreachable —
-not just uncopied. Confirmed by Aidan (2026-08-23).
+**Handoff artifact gap is now resolved.** The other 4 V2 runs (Run 1
+internal, Run 2 internal, Run 3 internal, Run 3 external) trained on
+`sjsu-1`, which had gone offline (see prior note) — it came back online
+2026-08-24 and Aidan pulled all 4 missing `outputs/` checkpoint folders
+directly from it to his laptop's copy of this repo. **The laptop copy used
+for the Google Drive handoff now has all 6/6 V2 run checkpoints.** Note this
+server's (`spark-833c`) own local `outputs/`/`wandb/` was *not* updated by
+that pull (Aidan pulled `sjsu-1` → laptop directly) — see Completion below
+for the scope distinction.
 
 ## Completion
 
-**V1: 100%, unchanged** (both ablation checkpoints trained and evaluated —
-`i7o4eg5n` internal / `2rr2h1f9` external, 0.9087 / 0.9054 val gene-family
-accuracy). **V2 code/config: 100%.** **V2 training: 6/6 runs complete
-per the poster's reported numbers**, but **locally archived: 2/6** (see gap
-above) — this repo directory does not currently hold reproducible artifacts
-(checkpoint + eval) for Run 1 internal, Run 2 internal, or either Run 3
-ablation.
+**V1: 100%, functionally complete**, but **the `i7o4eg5n`-equivalent
+checkpoint on this server specifically is currently corrupted** — see the
+incident note in Open Questions. Not a project-completion issue, just a
+`spark-833c`-local file state issue; the original checkpoint survives in
+Aidan's laptop copy (pulled before the incident) and possibly wandb.ai.
+**V2 code/config: 100%.** **V2 training: 6/6 runs complete** per the
+poster's reported numbers, and **6/6 now have recovered checkpoints on
+Aidan's laptop** (the handoff copy) as of 2026-08-24. **This server's
+(`spark-833c`) own local `outputs/`/`wandb/` still only has 2/6** (Run 1
+external, Run 2 external) — the other 4 were pulled `sjsu-1` → laptop
+directly, bypassing this machine, so this repo directory alone is not the
+complete artifact set. That's expected and fine — the laptop copy is the
+one being shipped.
 
 ## What's Working
 
@@ -81,33 +88,47 @@ while moving toward handoff.
 
 ## What's Not Started
 
-1. **Recovering the 4 missing V2 run artifacts** (Run 1 internal, Run 2
-   internal, Run 3 internal, Run 3 external) — blocked on the GPU server
-   they ran on being offline; wandb.ai cloud is the only other lead. See
-   Open Questions.
-2. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged,
+1. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged,
    kept intentionally per CLAUDE.md's documented project structure).
-3. V3 (KEGG/KofamKOALA, RAG) — not started, not scoped in detail.
+2. V3 (KEGG/KofamKOALA, RAG) — not started, not scoped in detail.
+3. (Optional, low priority) Mirroring the 4 recovered `outputs/` folders
+   from Aidan's laptop back onto `spark-833c` itself, if a fully consistent
+   6/6 copy on this server ever matters — not needed for the Drive handoff,
+   which ships from the laptop copy.
 
 ## Open Questions / Blockers
 
-- **Local artifact gap, currently unrecoverable (confirmed by Aidan,
-  2026-08-23):** the poster reports finished numbers for all 6 V2
-  ablations, but this repo directory only has checkpoints/wandb cache for
-  2 of them (both external-injection runs). The other 4 ran on a different
-  GPU server, and **that server has since gone offline** — so
-  `outputs/task1_drugclass_internal/`, `outputs/task2_mechanism_internal/`,
-  and both `outputs/task3_genefamily_{internal,external}/` cannot currently
-  be pulled from it. The one remaining path to recover them is wandb.ai
-  cloud (project `amr-soft-prompting`) — check whether those 4 runs synced
-  there before the server went down; if not, the poster's numbers for
-  those 4 tasks currently have no retrievable underlying checkpoint. Worth
-  flagging to Andreopoulos/whoever inherits this if reproducing those
-  specific results matters going forward — this isn't blocking the Drive
-  handoff itself, just something the recipient should know is missing.
-- GPU allocation / server state for the other two machines wasn't checked
-  this session (no jobs were launched) — not urgent since nothing is
-  currently queued.
+- **Incident (2026-08-23/24): cleanup accidentally re-triggered a stale
+  automation, overwriting `spark-833c`'s local V1 internal checkpoint.**
+  `scripts/check_memory_headroom.sh` runs via cron every 10 minutes and
+  gates a one-time auto-launch of the old V1 internal run
+  (`configs/gpu_server_internal.yaml`) behind a fire-once guard file
+  (`outputs/.internal_launched`). During Drive-handoff cleanup on
+  2026-08-23, that guard file (and `outputs/.memory_watch_state`) were
+  deleted as presumed-inert transient state — **this reset the guard**, and
+  the next cron tick relaunched the V1 internal run, which ran undetected
+  for over a day (started 10:40, discovered ~19:20 the next day) and
+  **overwrote `outputs/internal/best_model.pt`** (the `i7o4eg5n`-equivalent
+  V1 checkpoint) at least once. The rogue run's wandb logging also never
+  produced a `config.yaml`/summary locally despite the long runtime — its
+  health is questionable independent of the overwrite issue. **Resolution:**
+  both the wrapper process and its training subprocess were killed
+  (confirmed dead, GPU utilization back to 0%); the fire-once guard files
+  were already re-written by the script at launch time, so the cron job
+  will *not* auto-relaunch again. **Net effect:** this server's copy of the
+  V1 internal checkpoint is currently in a bad/partial state, but the
+  Drive-handoff laptop copy is unaffected — it was archived at 10:41 on
+  2026-08-23, one minute *before* the rogue run started, so it still has
+  the original good checkpoint. No action needed for the handoff; only
+  matters if someone does further work on `spark-833c` itself and expects
+  `outputs/internal/best_model.pt` to be the original V1 result.
+  **Lesson for future cleanup passes on this repo:** dotfile/state markers
+  living next to a cron-driven script (`outputs/.internal_launched`,
+  `.memory_watch_state`) are live automation state, not disposable — check
+  `crontab -l` for anything that references a file before deleting it.
+- Organism-dedup substitution rate (83%) and TADB Type I/III-VIII expansion
+  remain open, unchanged from before. One lower-severity code-review finding
+  remains open: no BLAST-DB skip-if-exists.
 - Organism-dedup substitution rate (83%) and TADB Type I/III-VIII expansion
   remain open, unchanged from before. One lower-severity code-review finding
   remains open: no BLAST-DB skip-if-exists.
@@ -133,6 +154,18 @@ while moving toward handoff.
    so committing them wasn't necessary. Same reasoning applied to the
    uncommitted `requirements.txt` addition (`jupyter`, `ipykernel`,
    `nbconvert`, `nbformat` — needed for the poster-figures notebook).
-5. **Discovered the local-artifact gap** (see Open Questions) while
-   reconciling this repo's `outputs/`/`wandb/` against the poster's
-   reported numbers.
+5. **Discovered, then closed, the local-artifact gap**: reconciling this
+   repo's `outputs/`/`wandb/` against the poster's reported numbers turned
+   up 4 of 6 V2 runs missing locally (trained on `sjsu-1`, which was
+   offline at the time). `sjsu-1` came back online 2026-08-24, and Aidan
+   pulled all 4 missing `outputs/` checkpoint folders directly to his
+   laptop's copy of this repo — the Drive-handoff copy now has all 6/6 V2
+   run checkpoints. This server's own `outputs/`/`wandb/` was not updated
+   by that pull (see Completion).
+6. **Incident: cleanup-triggered auto-relaunch of the V1 internal run**
+   overwrote `spark-833c`'s local `outputs/internal/best_model.pt` — caused
+   by deleting a cron job's fire-once guard file during cleanup, believing
+   it to be inert. Process killed once discovered; cron will not
+   auto-relaunch again (guard file was already restored by the script at
+   launch time). Does not affect the Drive-handoff laptop copy, which was
+   archived before the overwrite happened. Full writeup in Open Questions.
