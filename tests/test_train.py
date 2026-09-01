@@ -26,6 +26,7 @@ from src.training.train import (
     train_v2,
 )
 from src.data.card_parser import load_card_dataset
+from src.models.soft_prompt import NullSoftPrompt
 
 MODEL_NAME = "facebook/esm2_t6_8M_UR50D"
 NUM_ACCESSIONS_PER_MECHANISM = 10  # -> 8/1/1 train/val/test split per mechanism
@@ -344,6 +345,29 @@ class TestBuildV2Models:
         assert loss_fn.loss_type == "ce"
         assert loss_fn.batch_key == "amr_gene_family"
 
+    def test_none_conditioning_wires_null_soft_prompt(self, card_files):
+        """conditioning_field='none', target_field='amr_gene_family' (negative control, pairs with Run 3).
+
+        No real conditioning field is read at all -- build_v2_models must
+        produce a NullSoftPrompt (fixed zero token, no embedding table) rather
+        than looking 'none' up in TARGET_FIELD_SPECS/label_vocabularies.
+        """
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        _, _, _, label_vocabularies = build_dataloaders_from_records(records, batch_size=2)
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "none", "amr_gene_family",
+        )
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+
+        assert isinstance(soft_prompt, NullSoftPrompt)
+        assert len(list(soft_prompt.parameters())) == 0
+        assert classifier.head.out_features == len(label_vocabularies["amr_gene_family"])
+        assert classifier.target_name == "amr_gene_family"
+        assert loss_fn.loss_type == "ce"
+        assert loss_fn.batch_key == "amr_gene_family"
+
 
 # ---------------------------------------------------------------------------
 # run_v2_epoch
@@ -405,6 +429,29 @@ class TestRunV2Epoch:
             torch.equal(before, after)
             for before, after in zip(params_before, params_after)
         )
+
+    def test_none_conditioning_runs_end_to_end(self, card_files):
+        """run_v2_epoch's conditioning_batch_key=None branch (negative control)."""
+        fasta_path, aro_index_path = card_files
+        records = load_card_dataset(fasta_path, aro_index_path)
+        train_loader, _, _, label_vocabularies = build_dataloaders_from_records(
+            records, batch_size=2
+        )
+        config = _make_v2_config(
+            fasta_path, aro_index_path, Path("unused"), "internal",
+            "none", "amr_gene_family",
+        )
+        esm2, soft_prompt, classifier, loss_fn = build_v2_models(config, label_vocabularies, "cpu")
+        optimizer = build_optimizer(
+            "adam", list(soft_prompt.parameters()) + list(classifier.parameters()), 1e-3
+        )
+        metrics = run_v2_epoch(
+            train_loader, esm2, soft_prompt, classifier, loss_fn, "none", "cpu", optimizer
+        )
+        expected_keys = {"total", "amr_gene_family", "amr_gene_family_accuracy"}
+        assert set(metrics.keys()) == expected_keys
+        for value in metrics.values():
+            assert torch.isfinite(torch.tensor(value))
 
 
 # ---------------------------------------------------------------------------

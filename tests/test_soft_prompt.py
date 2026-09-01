@@ -7,7 +7,7 @@ on CPU, matching the 8M-model smoke-test convention used elsewhere in tests/.
 import pytest
 import torch
 
-from src.models.soft_prompt import SingleFieldSoftPrompt, SoftPromptModule
+from src.models.soft_prompt import NullSoftPrompt, SingleFieldSoftPrompt, SoftPromptModule
 
 EMBED_DIM = 320
 NUM_MECHANISMS = 10
@@ -115,3 +115,35 @@ class TestSingleFieldTrainableParameters:
         n_frozen = sum(1 for p in params if not p.requires_grad)
         assert len(params) > 0
         assert n_frozen == 0
+
+
+# ---------------------------------------------------------------------------
+# NullSoftPrompt (V2 negative control -- no conditioning, pairs with Run 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def null_soft_prompt() -> NullSoftPrompt:
+    """NullSoftPrompt loaded once per test module."""
+    return NullSoftPrompt(EMBED_DIM)
+
+
+class TestNullSoftPromptOutputShape:
+    @pytest.mark.parametrize("batch_size", [1, 2, 4])
+    def test_shape(self, null_soft_prompt, batch_size):
+        out = null_soft_prompt(batch_size)
+        assert out.shape == (batch_size, NullSoftPrompt.NUM_PROMPT_TOKENS, EMBED_DIM)
+
+
+class TestNullSoftPromptOutputIsZero:
+    def test_output_is_all_zero(self, null_soft_prompt):
+        out = null_soft_prompt(4)
+        assert torch.all(out == 0)
+
+
+class TestNullSoftPromptNoTrainableParameters:
+    def test_no_trainable_parameters(self, null_soft_prompt):
+        # The zero token is a registered buffer, not an nn.Parameter -- it
+        # must never train, or the negative control stops being a negative
+        # control.
+        assert len(list(null_soft_prompt.parameters())) == 0

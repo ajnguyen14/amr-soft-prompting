@@ -186,6 +186,34 @@ used only as Run 3's soft-prompt conditioning input (see table above).
 
 ---
 
+### Negative Control Runs (V2, added 2026-08-24 per Andreopoulos)
+
+Two additional runs, paired with Run 3 (`amr_gene_family` target), to test
+whether `ta_proximity` conditioning contributes any signal beyond the bare
+architecture — motivated directly by the sparse-signal finding above (19/6052
+accessions, 0.31% coverage, had a real same-replicon distance).
+
+Both runs use `conditioning_field: "none"`: `build_v2_models` (in
+`src/training/train.py`) wires a `NullSoftPrompt`
+(`src/models/soft_prompt.py`) instead of `SingleFieldSoftPrompt`. Unlike
+`SingleFieldSoftPrompt`, it holds no `nn.Embedding` — it returns a fixed,
+non-learned all-zero token (a registered buffer, not an `nn.Parameter`, so it
+can never train into carrying information). Token shape and
+`ESM2Wrapper.output_dim` accounting are otherwise identical to Run 3, so
+`injection_mode` (internal vs. external) still meaningfully differs between
+the pair, matching every other ablation's pattern.
+
+| Run | Conditioning input | Prediction target | Loss |
+|---|---|---|---|
+| Control | none (`NullSoftPrompt`, zero token) | `amr_gene_family` | `CrossEntropyLoss` |
+
+Configs: `configs/gpu_task3_genefamily_noconditioning_{internal,external}.yaml`.
+Same internal/external parity rule applies. Compare final val accuracy
+against Run 3's TA-proximity-conditioned checkpoints to determine whether
+`ta_proximity` is pulling its weight given the sparsity finding.
+
+---
+
 ## Reproducibility Requirements
 
 - **Random seeds** — set explicitly everywhere: PyTorch, numpy, and Python's `random`

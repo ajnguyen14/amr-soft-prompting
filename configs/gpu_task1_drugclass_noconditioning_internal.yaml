@@ -1,0 +1,45 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  # Separate output_dir per run so none of the V2 ablations (or this
+  # negative-control pair) ever overwrite each other's checkpoint.
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/task1_drugclass_noconditioning_internal/"
+
+model:
+  esm2_variant: "facebook/esm2_t33_650M_UR50D"
+  device: "cuda"
+  # Along with output_dir and logging.wandb_run_name, the only fields that
+  # differ from gpu_task1_drugclass_noconditioning_external.yaml -- same
+  # internal/external parity rule as V1/V2. GPU pinning for running this
+  # alongside its external counterpart is done via CUDA_VISIBLE_DEVICES at
+  # launch time, not here, so this field still parses identically on any
+  # server (see CLAUDE.md's Configuration System section).
+  injection_mode: "internal"
+
+training:
+  # Confirmed RTX 3090 ceiling (CLAUDE.md's Model Variants note). Bump to 32
+  # if this run is instead launched on spark-833c (DGX Spark). Must match
+  # gpu_task1_drugclass_noconditioning_external.yaml exactly (parity rule).
+  batch_size: 24
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"
+
+task:
+  # Negative control for Run 1 (CLAUDE.md's "Negative Control Runs" section,
+  # extended to Runs 1/2): same target (drug_class) as
+  # gpu_task1_drugclass_*.yaml, but conditioning_field="none" wires a
+  # NullSoftPrompt -- a fixed, non-learned zero token -- instead of
+  # SingleFieldSoftPrompt's amr_gene_family embedding. Isolates whether
+  # amr_gene_family conditioning contributes any signal beyond the
+  # architecture itself, same rationale as the task3 noconditioning pair.
+  conditioning_field: "none"
+  target_field: "drug_class"
+
+loss:
+  weight: 1.0
+
+logging:
+  wandb_project: "amr-soft-prompting"
+  wandb_run_name: "v2-task1-drugclass-noconditioning-internal"

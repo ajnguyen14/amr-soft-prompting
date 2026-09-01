@@ -105,3 +105,41 @@ class SingleFieldSoftPrompt(nn.Module):
             Tensor of shape (B, 1, embed_dim).
         """
         return self.embedding(field_index).unsqueeze(1)
+
+
+class NullSoftPrompt(nn.Module):
+    """Negative-control soft prompt: emits a fixed, non-learned zero token.
+
+    Used for the no-conditioning ablation runs (CLAUDE.md's "Negative
+    Control Runs" section) that pair with Run 3 -- same target
+    (amr_gene_family), same injection-mode mechanics as SingleFieldSoftPrompt,
+    but the token carries no information, so any accuracy delta against Run 3
+    isolates the contribution of ta_proximity's actual category values rather
+    than of having a soft-prompt token slot at all. The zero vector is a
+    registered buffer, not an nn.Parameter, so it is never updated by the
+    optimizer and can't drift into encoding information via gradients.
+
+    Args:
+        embed_dim: Output embedding dimension; must equal ESM2Wrapper.embed_dim.
+    """
+
+    NUM_PROMPT_TOKENS = 1
+
+    def __init__(self, embed_dim: int) -> None:
+        super().__init__()
+        self.register_buffer("_zero_token", torch.zeros(1, 1, embed_dim))
+
+    def forward(self, batch_size: int) -> torch.Tensor:
+        """Return a fixed all-zero token, broadcast to the batch.
+
+        Args:
+            batch_size: Number of samples in the batch. Unlike
+                SingleFieldSoftPrompt.forward, there is no per-sample
+                conditioning value to look up -- this is the whole point of
+                the negative control -- so the caller passes a plain int
+                rather than a field-index tensor.
+
+        Returns:
+            Tensor of shape (batch_size, 1, embed_dim), all zeros.
+        """
+        return self._zero_token.expand(batch_size, -1, -1)

@@ -19,7 +19,7 @@ from src.data.dataset import TARGET_FIELD_SPECS, AMRDataset, load_split_artifact
 from src.eval.metrics import compute_metrics, compute_single_target_metrics
 from src.models.classifier import ClassifierHead, SingleTargetClassifierHead
 from src.models.esm2_wrapper import ESM2Wrapper
-from src.models.soft_prompt import SingleFieldSoftPrompt, SoftPromptModule
+from src.models.soft_prompt import NullSoftPrompt, SingleFieldSoftPrompt, SoftPromptModule
 from src.training.loss import AMRLoss, SingleTargetLoss
 from src.utils.config import load_config
 
@@ -160,7 +160,12 @@ def build_v2_models(
     config: dict[str, Any],
     label_vocabularies: dict[str, list[str]],
     device: str,
-) -> tuple[ESM2Wrapper, SingleFieldSoftPrompt, SingleTargetClassifierHead, SingleTargetLoss]:
+) -> tuple[
+    ESM2Wrapper,
+    SingleFieldSoftPrompt | NullSoftPrompt,
+    SingleTargetClassifierHead,
+    SingleTargetLoss,
+]:
     """Construct the frozen ESM-2 backbone + a task-configurable V2 single-head pipeline.
 
     Reads config['task']['conditioning_field']/['target_field'] to determine
@@ -169,6 +174,11 @@ def build_v2_models(
     (Runs 1-3). Unlike build_models (V1, fixed mechanism+drug_class
     conditioning / amr_gene_family target), the same function here serves
     any of the three V2 runs.
+
+    conditioning_field == "none" is the negative-control case (CLAUDE.md's
+    "Negative Control Runs" section): builds a NullSoftPrompt instead of a
+    SingleFieldSoftPrompt, so no real conditioning information reaches the
+    classifier at all.
 
     Args:
         config: Merged config dict with 'model', 'task', 'classifier', and
@@ -187,25 +197,31 @@ def build_v2_models(
     conditioning_field = config["task"]["conditioning_field"]
     target_field = config["task"]["target_field"]
 
-    conditioning_spec = TARGET_FIELD_SPECS[conditioning_field]
     target_spec = TARGET_FIELD_SPECS[target_field]
-
-    if conditioning_spec["loss_type"] != "ce":
-        raise ValueError(
-            f"conditioning_field {conditioning_field!r} is multi-label "
-            "(loss_type='bce') -- SingleFieldSoftPrompt requires a single-label "
-            "categorical field."
-        )
 
     injection_mode = config["model"]["injection_mode"]
     esm2 = ESM2Wrapper(config["model"]["esm2_variant"], injection_mode=injection_mode).to(device)
 
-    num_conditioning = len(label_vocabularies[conditioning_field])
-    soft_prompt = SingleFieldSoftPrompt(num_conditioning, esm2.embed_dim).to(device)
+    if conditioning_field == "none":
+        soft_prompt: SingleFieldSoftPrompt | NullSoftPrompt = NullSoftPrompt(esm2.embed_dim).to(
+            device
+        )
+        num_prompt_tokens = NullSoftPrompt.NUM_PROMPT_TOKENS
+    else:
+        conditioning_spec = TARGET_FIELD_SPECS[conditioning_field]
+        if conditioning_spec["loss_type"] != "ce":
+            raise ValueError(
+                f"conditioning_field {conditioning_field!r} is multi-label "
+                "(loss_type='bce') -- SingleFieldSoftPrompt requires a single-label "
+                "categorical field."
+            )
+        num_conditioning = len(label_vocabularies[conditioning_field])
+        soft_prompt = SingleFieldSoftPrompt(num_conditioning, esm2.embed_dim).to(device)
+        num_prompt_tokens = SingleFieldSoftPrompt.NUM_PROMPT_TOKENS
 
     num_targets = len(label_vocabularies[target_field])
     classifier = SingleTargetClassifierHead(
-        input_dim=esm2.output_dim(SingleFieldSoftPrompt.NUM_PROMPT_TOKENS),
+        input_dim=esm2.output_dim(num_prompt_tokens),
         hidden_dim=config["classifier"]["hidden_dim"],
         dropout=config["classifier"]["dropout"],
         target_name=target_field,
@@ -327,7 +343,7 @@ def run_epoch(
 def run_v2_epoch(
     loader: DataLoader,
     esm2: ESM2Wrapper,
-    soft_prompt: SingleFieldSoftPrompt,
+    soft_prompt: SingleFieldSoftPrompt | NullSoftPrompt,
     classifier: SingleTargetClassifierHead,
     loss_fn: SingleTargetLoss,
     conditioning_field: str,
@@ -347,7 +363,9 @@ def run_v2_epoch(
             build_v2_models, already moved to `device`.
         conditioning_field: Vocab key feeding the soft prompt (e.g.
             'amr_gene_family'); its AMRDataset batch key is looked up via
-            TARGET_FIELD_SPECS.
+            TARGET_FIELD_SPECS. 'none' is the negative-control case (see
+            build_v2_models): soft_prompt is a NullSoftPrompt and takes a
+            batch size instead of a field-index tensor.
         device: Torch device string.
         optimizer: If given, this is a training epoch: backward + step per
             batch. If None, this is an evaluation epoch: no gradient updates.
@@ -362,7 +380,9 @@ def run_v2_epoch(
     classifier.train(is_train)
     esm2.eval()
 
-    conditioning_batch_key = TARGET_FIELD_SPECS[conditioning_field]["batch_key"]
+    conditioning_batch_key = (
+        None if conditioning_field == "none" else TARGET_FIELD_SPECS[conditioning_field]["batch_key"]
+    )
     target_name = classifier.target_name
     batch_key = loss_fn.batch_key
     loss_type = loss_fn.loss_type
@@ -374,7 +394,10 @@ def run_v2_epoch(
         for batch in loader:
             batch = move_batch_to_device(batch, device)
 
-            soft_prompt_vectors = soft_prompt(batch[conditioning_batch_key])
+            if conditioning_batch_key is None:
+                soft_prompt_vectors = soft_prompt(len(batch["sequence"]))
+            else:
+                soft_prompt_vectors = soft_prompt(batch[conditioning_batch_key])
             pooled = esm2(batch["sequence"], soft_prompt_vectors)
             logits = classifier(pooled)
             losses = loss_fn(logits, batch)

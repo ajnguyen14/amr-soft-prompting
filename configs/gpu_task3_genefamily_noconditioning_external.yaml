@@ -1,0 +1,44 @@
+paths:
+  card_fasta: "/data/aidannguyen/amr-soft-prompting/data/raw/protein_fasta_protein_homolog_model.fasta"
+  card_json: "/data/aidannguyen/amr-soft-prompting/data/raw/card.json"
+  aro_index: "/data/aidannguyen/amr-soft-prompting/data/raw/aro_index.tsv"
+  # Separate output_dir per run so none of the V2 ablations (or this
+  # negative-control pair) ever overwrite each other's checkpoint.
+  output_dir: "/data/aidannguyen/amr-soft-prompting/outputs/task3_genefamily_noconditioning_external/"
+
+model:
+  esm2_variant: "facebook/esm2_t33_650M_UR50D"
+  device: "cuda"
+  # Along with output_dir and logging.wandb_run_name, the only fields that
+  # differ from gpu_task3_genefamily_noconditioning_internal.yaml -- same
+  # internal/external parity rule as V1/V2. GPU pinning for running this
+  # alongside its internal counterpart is done via CUDA_VISIBLE_DEVICES at
+  # launch time, not here, so this field still parses identically on any
+  # server (see CLAUDE.md's Configuration System section).
+  injection_mode: "external"
+
+training:
+  # Confirmed RTX 3090 ceiling (CLAUDE.md's Model Variants note). Bump to 32
+  # if this run is instead launched on spark-833c (DGX Spark). Must match
+  # gpu_task3_genefamily_noconditioning_internal.yaml exactly (parity rule).
+  batch_size: 24
+  learning_rate: 1.0e-4
+  epochs: 50
+  optimizer: "adam"
+
+task:
+  # Negative control for Run 3 (CLAUDE.md's "Negative Control Runs"
+  # section): same target (amr_gene_family) as gpu_task3_genefamily_*.yaml,
+  # but conditioning_field="none" wires a NullSoftPrompt -- a fixed,
+  # non-learned zero token -- instead of SingleFieldSoftPrompt's
+  # ta_proximity embedding. Isolates whether ta_proximity's category values
+  # contribute any signal beyond the architecture itself.
+  conditioning_field: "none"
+  target_field: "amr_gene_family"
+
+loss:
+  weight: 1.0
+
+logging:
+  wandb_project: "amr-soft-prompting"
+  wandb_run_name: "v2-task3-genefamily-noconditioning-external"
