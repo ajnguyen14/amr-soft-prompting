@@ -61,6 +61,12 @@ Thumbs.db
 *.swp
 *.swo
 
+# Local tooling and run artifacts
+.claude/
+logs/
+.pytest_cache/
+*.lock
+
 # Host-specific ops scripts (not part of the reproducible pipeline)
 scripts/check_memory_headroom.sh
 scripts/wait_and_run.sh
