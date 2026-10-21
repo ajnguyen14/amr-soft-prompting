@@ -54,19 +54,33 @@ Two changes, both specified by Andreopoulos (2026-07-21 meeting):
    bp distance to the nearest TA locus on the same replicon. See
    "TA-Proximity Pipeline" below.
 
-### V3 — Knowledge Integration (future, not yet scoped in detail)
-- KEGG functional annotation via KofamKOALA
+### V3 — Binary AMR Detection + Feature Analysis (scope confirmed 2026-10-09, per Andreopoulos)
+**Full spec: `docs/V3_PLAN.md` — read it before any V3 work.** Summary:
+- **Main task:** binary AMR-like vs. non-AMR protein prediction, with positives
+  and easy/hard negatives drawn from the same RefSeq proteomes.
+- **Second task:** feature analysis on the trained detector (ablation and
+  counterfactual feature swaps), showing how each property affects the prediction.
+  Not a correlation study.
+- **Features (soft-prompt conditioning, one token each):** replicon type,
+  taxonomy, KEGG category (via `kofam_scan`, with AMR-related KOs/BRITE ko01504
+  **masked**), and marker-gene proximity (TA, MGE, integron). Every feature
+  passes the leakage gate in `docs/V3_PLAN.md` §3 before use. Proximity to
+  other AMR genes is excluded (leaks neighbour labels).
+- Stage-2 property heads (family / drug class / mechanism) characterize
+  flagged proteins.
+- The model will be put into a UI-based educational tool, owned by Andreopoulos's
+  team (its design is out of scope for this repo's plan).
+- V3 work runs on `sjsu`.
+
+### V4 — unscheduled
 - RAG (retrieval-augmented generation) as preprocessing enrichment
-- Encodes qualitative text-based knowledge into soft prompt vectors
-- Binary AMR detection (originally Andreopoulos's idea) is a candidate
-  direction here but is **not currently scoped** — would require RefSeq
-  negative sampling design (easy vs. hard negatives) that hasn't been
-  started. Do not build toward this without an explicit go-ahead.
 
 ### Versioning Rules for Claude Code
 - **Never implement V3 features while working on V1/V2 tasks**
-- If a task would naturally pull in V3 scope (KEGG, RAG, binary detection),
-  **stop and flag it explicitly** before proceeding
+- If a task would naturally pull in V4 scope (RAG), **stop and flag it
+  explicitly** before proceeding
+- The multi-token soft prompt for V3 is an architectural change to the core
+  contribution — write up the design and get review before implementing it
 - Stubs and `# TODO: V3` comments are acceptable placeholders
 
 ---
@@ -603,9 +617,9 @@ If Claude Code is on the CPU server and asked to do something in the 🚫 column
 - **ESM-2 is always frozen.** Never set `requires_grad=True` on ESM-2 parameters.
 - **The soft prompt module is the novel contribution.** Treat it with the most care — document design decisions, flag any architectural changes before implementing.
 - **Prodigal handles nucleotide → amino acid translation.** ESM-2 never sees raw nucleotide sequences.
-- **RAG is V3 and was Andreopoulos's suggestion.** Do not add RAG components until V3 is explicitly started.
+- **RAG is V4 (unscheduled) and was Andreopoulos's suggestion.** Do not add RAG components until V4 is explicitly started.
 - **AlphaFold is out of scope** for all versions of this project.
-- **KEGG is V3 only.** Do not scaffold KEGG integration in V1 or V2.
+- **KEGG is V3 only, and only as a masked category feature.** Do not scaffold KEGG integration in V1 or V2, and never feed unmasked AMR-related KOs into the model.
 
 ---
 

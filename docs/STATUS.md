@@ -1,7 +1,9 @@
 # AMR Soft Prompting — Project Status
-_Last updated: 2026-09-01 16:30_
+_Last updated: 2026-10-09_
 
 ## Current Version
+
+**V3 scope confirmed (2026-10-09): binary AMR vs. non-AMR detection + feature analysis. Planning complete (`docs/V3_PLAN.md`), implementation not started; it will run on `sjsu`.** V2 below remains the latest trained state.
 
 **V2 — Single-Head Retargeting + TA-Proximity Conditioning, extended with negative-control ablations across all 3 tasks. Core V2 + controls are training-complete; handoff artifacts are current.**
 
@@ -54,7 +56,9 @@ Note on this entry: two independent STATUS.md updates were written on 2026-08-24
 
 ## What's In Progress
 
-Nothing actively running as of 2026-09-01. All negative-control runs finished 2026-08-26; code committed and being reconciled with origin (this rebase) today.
+- V3 build, step 1 of `docs/V3_PLAN.md` §8 (docs done; `transformers` pin + injection-mode audit next, on `sjsu`).
+
+No training running. As of 2026-09-01: All negative-control runs finished 2026-08-26; code committed and being reconciled with origin (this rebase) today.
 
 ## What's Not Started
 
@@ -65,10 +69,11 @@ Nothing actively running as of 2026-09-01. All negative-control runs finished 20
 5. Clean up stale wandb run dirs from Task 2's killed first attempt (`run-20260825_105032-404g947p`, `run-20260825_105032-i5q0e1h7`) — harmless but risk being mistaken for real results later.
 6. `src/data/prodigal_runner.py` — still an empty stub, deferred (unchanged).
 7. Mirroring the 4 recovered `outputs/` folders from Aidan's laptop back onto `spark-833c` itself — optional, not needed for any current handoff.
-8. V3 (KEGG/KofamKOALA, RAG) — not started, not scoped in detail.
+8. V3 build order (`docs/V3_PLAN.md` §8): CV folds + baselines → binary dataset build (proteome fetch, CARD blastp, easy/hard negatives) → feature extraction (replicon, taxonomy, masked KEGG via kofam_scan, TA/MGE/integron proximity) + leakage gate → shortcut diagnostics → ESM-2 embedding cache → binary detector → feature analysis + stage-2 heads → genome benchmark vs RGI/AMRFinderPlus + XAI `predict` contract. RAG moved to V4.
 
 ## Open Questions / Blockers
 
+- **V3 open decisions** (`docs/V3_PLAN.md` §9): ownership of non-UI work, taxonomy rank, MGE window N, negative ratio, TA detection for non-RefSeq genomes, held-out benchmark genomes. The multi-token soft prompt needs a design review before implementation.
 - **Incident (2026-08-23/24, `spark-833c`): cleanup accidentally re-triggered a stale automation, overwriting that server's local V1 internal checkpoint.** `scripts/check_memory_headroom.sh` runs via cron every 10 minutes and gates a one-time auto-launch of the old V1 internal run behind a fire-once guard file (`outputs/.internal_launched`). During Drive-handoff cleanup, that guard file (and `outputs/.memory_watch_state`) were deleted as presumed-inert — this reset the guard, and the next cron tick relaunched the V1 internal run, which ran undetected for over a day and overwrote `outputs/internal/best_model.pt` on `spark-833c`. **Resolved**: both processes killed, guard files already re-written at launch time so cron will not auto-relaunch. The Drive-handoff laptop copy is unaffected (archived one minute before the rogue run started). **Lesson**: dotfile/state markers next to a cron-driven script are live automation state, not disposable — check `crontab -l` before deleting anything like this again.
 - **Run 2's ~99.5% accuracy (both modes) needs a leakage sanity-check** before being reported as a clean result — see What's Not Started.
 - **Task 1 noconditioning's identical 0.8349 internal/external result** needs the same kind of scrutiny — see What's Not Started.
@@ -78,6 +83,7 @@ Nothing actively running as of 2026-09-01. All negative-control runs finished 20
 
 ## Recent Changes
 
+0. **V3 plan revised per Andreopoulos's feedback (2026-10-09)**: main goal is binary AMR vs. non-AMR prediction, with feature analysis on top (not a correlation study); concrete positive/negative dataset spec and schema; taxonomy, masked KEGG category, and marker-gene proximity (TA/MGE/integron) added as features; explainable-AI interface contract for Shri and Annie; build order set for `sjsu`. CLAUDE.md roadmap updated (KEGG in V3, RAG → V4).
 1. **Reconciled two independently-written 2026-08-24 STATUS.md histories** (this session, 2026-09-01) — `spark-833c`'s poster/handoff/incident narrative and `sjsu`'s wandb-reconciliation/negative-control narrative had diverged from a shared base (`4ddb15d`) without either side knowing about the other. Merged into one timeline (see Current Version) during a `git rebase` conflict resolution.
 2. **Extended negative-control ablations from Run 3 only to all 3 tasks**: 6 total noconditioning runs (task1/2/3 × internal/external) built, launched on `sjsu`, and finished by 2026-08-26. Task 2's first attempt (2026-08-25) was interrupted mid-run and successfully retried.
 3. **Committed the negative-control code** (`24e49dd`, this session): `NullSoftPrompt`, `build_v2_models`/`run_v2_epoch` wiring, 6 new configs, 7 new smoke tests (39/39 passing on touched modules), CLAUDE.md's "Negative Control Runs" section.
